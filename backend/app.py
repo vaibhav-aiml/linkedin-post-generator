@@ -6,11 +6,15 @@ import json
 from io import BytesIO
 from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.enums import TA_CENTER, TA_LEFT
+from reportlab.lib.styles import getSampleStyleSheet
+from groq import Groq
 
 app = Flask(__name__)
 CORS(app)
+
+# Initialize Groq client
+GROQ_API_KEY = os.getenv('GROQ_API_KEY', 'YOUR_GROQ_API_KEY_HERE')
+client = Groq(api_key=GROQ_API_KEY)
 
 HISTORY_FILE = 'post_history.json'
 post_history = []
@@ -19,9 +23,8 @@ if os.path.exists(HISTORY_FILE):
     try:
         with open(HISTORY_FILE, 'r') as f:
             post_history = json.load(f)
-        print(f"Loaded {len(post_history)} posts")
     except:
-        print("No existing history")
+        pass
 
 def save_post(topic, content, post_type):
     global post_history
@@ -49,201 +52,70 @@ def generate_post():
         data = request.json
         topic = data.get('topic', '')
         post_type = data.get('type', 'professional')
+        length = data.get('length', 'medium')
         
-        if post_type == 'professional':
-            content = f"""What I Have Learned About {topic} After 5 Years in the Industry
-
-The journey to mastering {topic} has been nothing short of transformative. Looking back, I wish someone had shared these insights with me when I was starting out.
-
-The Biggest Lesson: Consistency Over Intensity
-
-When I first started working with {topic}, I thought success meant working 80 hour weeks and sacrificing everything else. I was wrong. The people who truly excel in {topic} are not the ones who work the hardest for a week and burn out. They are the ones who show up every single day, even when motivation is low.
-
-Building Genuine Relationships Matters More Than Technical Skills
-
-Early in my career, I focused entirely on learning technical aspects of {topic}. I ignored networking and relationship building. That was a mistake. The opportunities that changed my career came from people I had built genuine connections with, not from random job applications or cold emails.
-
-Never Stop Learning
-
-{topic} evolves constantly. What was cutting edge two years ago is now standard practice. The professionals who thrive are the ones who dedicate time each week to learning something new. I make it a habit to read one book, take one course, or attend one workshop every month.
-
-Take Imperfect Action
-
-Analysis paralysis is real. I spent months planning before taking action. Now I follow a simple rule: take imperfect action. You can always adjust course, but you cannot steer a parked car.
-
-Your Turn
-
-What is the most important lesson you have learned in your {topic} journey? I would genuinely love to hear your perspective in the comments below.
-
-Save this post for when you need a reminder to keep going.
-
-#{topic.replace(' ', '')} #ProfessionalGrowth #CareerAdvice #LessonsLearned #Motivation"""
-
-        elif post_type == 'tech':
-            content = f"""The State of {topic} in 2024: What Every Professional Needs to Know
-
-After spending considerable time researching and working with {topic}, I want to share my honest observations about where this field is heading.
-
-The landscape is changing faster than ever before. What was considered advanced just 18 months ago is now becoming table stakes. Here is what you need to know.
-
-First, AI integration is no longer optional. Every company is finding ways to incorporate intelligence into their {topic} workflows. If you are not exploring this, you are falling behind.
-
-Second, cloud native architectures have won. The debate is over. Organizations that have not migrated are now playing catch up. The efficiency gains are too significant to ignore.
-
-Third, security must be built in from day one. The era of adding security as an afterthought is over. Zero trust models are becoming standard practice across the industry.
-
-Fourth, sustainability is becoming a competitive advantage. Efficient code means lower cloud costs and smaller carbon footprints. Green coding is not just ethical, it is economical.
-
-What does this mean for you?
-
-If you are early in your career, focus on fundamentals. The specific tools will change, but solid understanding of core principles will serve you for decades.
-
-If you are a manager, invest in upskilling your team. The skills gap is widening and those who invest in learning will pull ahead.
-
-If you are a leader, create a culture of continuous learning. The organizations that learn fastest will win.
-
-The Bottom Line
-
-{topic} is transforming from a technical specialty to a business necessity. The question is not whether you should adopt these practices, but how quickly you can.
-
-Let me know in the comments, what trend in {topic} excites you most right now?
-
-Tag a colleague who needs to see this.
-
-#{topic.replace(' ', '')} #TechTrends #Innovation #CloudComputing #FutureOfWork"""
-
-        elif post_type == 'marketing':
-            content = f"""Marketing in {topic}: What Actually Works in 2024
-
-I have run hundreds of marketing campaigns and spent significant budget testing different strategies. Here is what I have learned about what actually works in {topic} and what is a complete waste of time.
-
-Strategy One: Know Your Audience Deeply
-
-Most marketing fails because it tries to speak to everyone. When you speak to everyone, you connect with no one. The most successful campaigns I have run were targeted at very specific segments. Get granular about who you are trying to reach.
-
-Strategy Two: Provide Value Before Asking for Anything
-
-The best marketing is helpful marketing. I have seen conversion rates triple when we shifted from selling to helping. Share insights, answer questions, solve problems. When you give first, people will naturally want to work with you.
-
-Strategy Three: Measure What Actually Matters
-
-Vanity metrics like likes and shares feel good but they do not pay the bills. Focus on metrics that tie directly to business outcomes. Cost per acquisition, customer lifetime value, and return on ad spend are what executives actually care about.
-
-Strategy Four: Test Everything
-
-I cannot tell you how many times my assumptions have been wrong. The only way to know what works is to test. Run small experiments, measure results, scale what works, and kill what does not.
-
-Common Mistakes I See
-
-Not having a clear value proposition. Trying to be everywhere at once. Ignoring data. Forgetting to follow up.
-
-Your Action Items for This Week
-
-Audit your current marketing strategy. Identify one thing you are doing that is not working. Stop doing it. Identify one thing you could test. Run a small experiment.
-
-What marketing strategy has worked best for you this year? I am genuinely curious to learn from your experience.
-
-#{topic.replace(' ', '')} #MarketingStrategy #DigitalMarketing #BusinessGrowth #MarketingTips"""
-
-        elif post_type == 'leadership':
-            content = f"""Leadership Lessons from {topic}: What 10 Years of Leading Teams Has Taught Me
-
-I have made plenty of mistakes as a leader. I want to share the most important lessons I have learned so you can avoid making the same errors I did.
-
-Lesson One: Listen More Than You Speak
-
-Early in my leadership journey, I thought I needed to have all the answers. I would jump in with solutions before fully understanding problems. This was a terrible approach. The best ideas almost always come from the people doing the work every day. Create space for your team to share their thoughts.
-
-Lesson Two: Psychological Safety Is Everything
-
-Teams that feel safe to speak up, admit mistakes, and share ideas outperform teams that do not by a significant margin. I have seen this play out repeatedly. As a leader, your most important job is creating an environment where people feel psychologically safe.
-
-Lesson Three: Micromanagement Destroys Morale
-
-I used to micromanage because I cared deeply about quality. What I did not realize was that I was destroying my team's motivation and creativity. Hire great people, set clear expectations, and then get out of their way. Trust is the foundation of high performing teams.
-
-Lesson Four: Admit When You Are Wrong
-
-Pretending to have all the answers erodes trust. Being honest about your mistakes builds respect and shows your team that it is okay to be human. Some of the most powerful moments in my career came from simply saying, I was wrong about that.
-
-Lesson Five: Develop Other Leaders
-
-Your true legacy is not the projects you completed or the revenue you generated. It is the leaders you helped develop. Spend meaningful time mentoring your team. Their growth is your ultimate measure of success.
-
-A Challenge for You
-
-Pick one of these principles and apply it intentionally this week. Then ask your team for feedback. You might be surprised by what you learn.
-
-What is the best leadership advice you have ever received? I would love to learn from your experience.
-
-#{topic.replace(' ', '')} #Leadership #Management #TeamBuilding #CareerGrowth #ExecutiveLeadership"""
-
-        elif post_type == 'career':
-            content = f"""Career Advice for Anyone Building a Future in {topic}
-
-I have made many mistakes in my career journey. Here is what I wish someone had told me earlier.
-
-Stop Comparing Yourself to Others
-
-Social media makes it look like everyone is succeeding except you. This is not reality. People share their wins, not their struggles. Focus on your own progress. Compare yourself only to who you were yesterday.
-
-Say Yes to Opportunities That Scare You
-
-Growth happens outside your comfort zone. The projects I was most nervous about taught me the most. When an opportunity scares you, that is usually a sign you should take it.
-
-Build Relationships Before You Need Them
-
-Reach out to people you admire. Offer help without expecting anything in return. Your network will be there for you when you need it, but only if you have invested in those relationships beforehand.
-
-Take Care of Yourself
-
-Burnout is real and it will catch up with you. I learned this the hard way. Your career is a marathon, not a sprint. Rest is productive. Exercise is not optional. Sleep is not for the weak.
-
-Ask for Help
-
-No one succeeds alone. The most successful people I know are not afraid to admit what they do not know. Asking for help is a sign of strength, not weakness.
-
-Your 30 Day Career Plan
-
-Week one, identify one skill you want to develop. Week two, find a mentor or course. Week three, practice that skill daily. Week four, share what you learned with your network.
-
-What is one piece of career advice you would give to someone just starting out? Share your wisdom in the comments.
-
-#{topic.replace(' ', '')} #CareerAdvice #ProfessionalDevelopment #GrowthMindset #JobSearch #Success"""
-
-        else:
-            content = f"""Everything I Wish I Knew About {topic} Before I Started
-
-Looking back at my journey, here are the most important lessons I have learned about {topic}. I hope these insights save you time and frustration.
-
-Lesson One: Done Is Better Than Perfect
-
-I wasted so much time trying to make things perfect before sharing them. This was fear disguised as perfectionism. Now I follow a simple rule, ship early and iterate based on feedback.
-
-Lesson Two: Ask for Help
-
-I used to struggle alone, thinking I needed to figure everything out myself. This was foolish. No one succeeds alone. The most successful people I know are not afraid to admit what they do not know.
-
-Lesson Three: Consistency Beats Intensity
-
-Working hard for a week then burning out does not create lasting results. Small daily actions compound into remarkable outcomes over time. Show up every day, even when you do not feel like it.
-
-Lesson Four: Your Attitude Determines Your Altitude
-
-Challenges will come. Setbacks will happen. How you respond to them matters more than the challenges themselves. I have seen talented people fail because of poor attitude and less talented people succeed because of great attitude.
-
-Lesson Five: Help Others Generously
-
-The best way to advance your own career is to help others advance theirs. Share what you learn. Make introductions. Give credit freely. What goes around truly does come around.
-
-A Practical Exercise
-
-Write down one thing you learned this week about {topic}. Share it with your network. You will be surprised how many people appreciate your insights.
-
-What is the most important lesson you have learned in your professional journey? I would love to hear your perspective.
-
-#{topic.replace(' ', '')} #LifeLessons #GrowthMindset #Wisdom #PersonalDevelopment #Success"""
-
+        # Map length to word count
+        length_map = {'short': '150-200 words', 'medium': '350-450 words', 'long': '550-700 words'}
+        target_length = length_map.get(length, '350-450 words')
+        
+        # Map post type to tone and style
+        type_config = {
+            'professional': {'tone': 'professional and insightful', 'style': 'share lessons learned and actionable advice'},
+            'networking': {'tone': 'friendly and connection-oriented', 'style': 'invite conversation and relationship building'},
+            'achievement': {'tone': 'celebratory and humble', 'style': 'share a milestone with gratitude and lessons'},
+            'tech': {'tone': 'technical and forward-thinking', 'style': 'discuss trends, tools, and predictions'},
+            'marketing': {'tone': 'strategic and value-driven', 'style': 'share proven strategies and results'},
+            'leadership': {'tone': 'inspirational and practical', 'style': 'share leadership principles and real examples'},
+            'career': {'tone': 'supportive and actionable', 'style': 'give career advice and encouragement'}
+        }
+        config = type_config.get(post_type, type_config['professional'])
+        
+        # Create prompt for Groq
+        prompt = f"""Write an engaging LinkedIn post about "{topic}".
+
+Requirements:
+- Tone: {config['tone']}
+- Style: {config['style']}
+- Length: {target_length}
+- Write in first person as a professional sharing real insights
+- Include a thoughtful question at the end to encourage comments
+- Use 3-5 relevant hashtags at the end
+- Use short paragraphs and line breaks for easy reading
+- Sound authentic and personal, not like AI wrote it
+- Start with a strong hook that grabs attention
+- Include specific, practical advice or insights
+
+The post should be valuable for professionals in this field."""
+
+        # Call Groq API - using Llama 3.3 70B (excellent quality)
+        chat_completion = client.chat.completions.create(
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are a expert LinkedIn content creator who writes engaging, valuable posts that professionals love to read and share."
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+            model="llama-3.3-70b-versatile",
+            temperature=0.7,
+            max_tokens=1200
+        )
+        
+        content = chat_completion.choices[0].message.content
+        
+        # Generate hashtags separately
+        hashtag_prompt = f"Generate 5 relevant hashtags for a LinkedIn post about {topic}. Return only the hashtags separated by spaces, like this: #Topic #Example #Tags"
+        hashtag_response = client.chat.completions.create(
+            messages=[{"role": "user", "content": hashtag_prompt}],
+            model="llama-3.1-8b-instant",
+            temperature=0.5,
+            max_tokens=100
+        )
+        hashtags = hashtag_response.choices[0].message.content.strip().split()
+        
         save_post(topic, content, post_type)
         
         return jsonify({
@@ -251,7 +123,7 @@ What is the most important lesson you have learned in your professional journey?
             'post': {
                 'content': content,
                 'type': post_type,
-                'suggested_hashtags': [f'#{topic.replace(" ", "")}', '#LinkedIn', '#ProfessionalGrowth', '#CareerAdvice']
+                'suggested_hashtags': hashtags[:5]
             }
         })
         
@@ -259,7 +131,9 @@ What is the most important lesson you have learned in your professional journey?
         print(f"Error: {e}")
         return jsonify({'error': str(e)}), 500
 
-# Keep all other routes the same as before
+# Keep all your other routes (generate-message, analyze-text, get-history, etc.)
+# They remain exactly the same as before
+
 @app.route('/api/generate-message', methods=['POST'])
 def generate_message():
     try:
@@ -267,69 +141,213 @@ def generate_message():
         recipient = data.get('recipient_name', '')
         context = data.get('context', '')
         
-        message = f"""Hello {recipient},
+        message_prompt = f"""Write a professional LinkedIn connection message to {recipient} about {context}.
 
-I came across your profile and was impressed by your work in {context}. I am also passionate about this field and would love to connect.
+Requirements:
+- Be polite and respectful
+- Show genuine interest in their work
+- Keep it concise (100-150 words)
+- End with a clear call to action
+- Sound authentic, not like a template"""
 
-I believe we could learn a lot from each other. Would you be open to a quick chat sometime next week?
-
-Looking forward to connecting.
-
-Best regards
-[Your Name]"""
+        message_response = client.chat.completions.create(
+            messages=[{"role": "user", "content": message_prompt}],
+            model="llama-3.1-8b-instant",
+            temperature=0.7,
+            max_tokens=300
+        )
+        message = message_response.choices[0].message.content
         
         return jsonify({'success': True, 'message': message})
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        # Fallback to template if API fails
+        message = f"""Hello {recipient},
+
+I came across your profile and was impressed by your work in {context}.
+
+Would love to connect and learn from your experience.
+
+Best regards,
+[Your Name]"""
+        return jsonify({'success': True, 'message': message})
 
 @app.route('/api/analyze-text', methods=['POST'])
 def analyze_text():
     try:
         data = request.json
         text = data.get('text', '')
+        
+        if not text or len(text.strip()) == 0:
+            return jsonify({
+                'success': True,
+                'analysis': {
+                    'score': 0,
+                    'rating': 'No Text',
+                    'summary': 'Please paste a LinkedIn post to analyze',
+                    'word_count': 0,
+                    'hashtag_count': 0,
+                    'question_count': 0,
+                    'has_emoji': False,
+                    'suggestions': ['Paste your LinkedIn post above'],
+                    'improvement_tips': ['Paste a post to get started'],
+                    'corrected_version': '',
+                    'length_status': 'No Data',
+                    'length_message': 'Waiting for post',
+                    'question_status': 'No Data',
+                    'question_message': 'Add a question',
+                    'hashtag_status': 'No Data',
+                    'hashtag_message': 'Add hashtags',
+                    'emoji_status': 'No Data',
+                    'emoji_message': 'Add emojis'
+                }
+            })
+        
+        # Calculate basic metrics
         word_count = len(text.split())
-        has_question = '?' in text
-        has_hashtags = '#' in text
+        question_count = text.count('?')
         hashtag_count = text.count('#')
+        has_question = question_count > 0
+        has_emoji = any(c in text for c in ['😊', '🚀', '💡', '✅', '📊', '🎯', '💻', '🤝', '✨', '🔥', '💪', '🎉'])
         
+        # Score calculation
         score = 60
-        suggestions = []
         
+        # Length scoring
         if 150 <= word_count <= 300:
             score += 15
+            length_status = "Perfect"
+            length_message = f"Great! {word_count} words is ideal"
         elif word_count < 100:
             score -= 10
-            suggestions.append("Add more details to make your post more valuable")
+            length_status = "Too Short"
+            length_message = f"Only {word_count} words. Add more content"
+        elif word_count > 400:
+            score -= 10
+            length_status = "Too Long"
+            length_message = f"{word_count} words is too long"
+        elif word_count < 150:
+            score += 5
+            length_status = "Good"
+            length_message = f"{word_count} words. Add 50 more"
+        else:
+            score += 3
+            length_status = "Acceptable"
+            length_message = f"{word_count} words is acceptable"
         
-        if has_question:
+        # Question scoring
+        if question_count >= 2:
             score += 15
+            question_status = "Excellent"
+            question_message = f"{question_count} questions - great for engagement"
+        elif question_count == 1:
+            score += 10
+            question_status = "Good"
+            question_message = "1 question - good for discussion"
         else:
             score -= 15
-            suggestions.append("Add a question to encourage comments and discussion")
+            question_status = "Missing"
+            question_message = "No questions. Add one to engage readers"
         
-        if has_hashtags:
-            if 3 <= hashtag_count <= 5:
-                score += 10
-            else:
-                suggestions.append("Use 3 to 5 hashtags for best results")
+        # Hashtag scoring
+        if 3 <= hashtag_count <= 5:
+            score += 12
+            hashtag_status = "Perfect"
+            hashtag_message = f"{hashtag_count} hashtags - ideal"
+        elif hashtag_count == 2:
+            score += 6
+            hashtag_status = "Good"
+            hashtag_message = "2 hashtags. Add 1-2 more"
+        elif hashtag_count == 1:
+            score += 3
+            hashtag_status = "Low"
+            hashtag_message = "Only 1 hashtag. Add 2-4 more"
+        elif hashtag_count > 5:
+            score -= 5
+            hashtag_status = "Too Many"
+            hashtag_message = f"{hashtag_count} hashtags. Use 3-5"
         else:
-            score -= 8
-            suggestions.append("Add 3 to 5 relevant hashtags for better discoverability")
+            score -= 10
+            hashtag_status = "Missing"
+            hashtag_message = "No hashtags. Add 3-5 relevant ones"
+        
+        # Emoji scoring
+        if has_emoji:
+            score += 5
+            emoji_status = "Good"
+            emoji_message = "Emojis add visual appeal"
+        else:
+            emoji_status = "Missing"
+            emoji_message = "No emojis. Add 1-2 relevant ones"
         
         score = max(0, min(100, score))
         
+        # Rating
         if score >= 85:
             rating = "Excellent"
-            summary = "This is a high quality post ready to publish"
+            summary = "High quality post ready to publish"
         elif score >= 70:
             rating = "Good"
-            summary = "This is a solid post with minor improvements possible"
+            summary = "Solid post with minor improvements"
         elif score >= 50:
             rating = "Average"
-            summary = "This post has potential but needs several improvements"
+            summary = "Has potential but needs improvements"
         else:
             rating = "Needs Work"
-            summary = "This post needs significant improvements to perform well"
+            summary = "Significant improvements needed"
+        
+        # Generate suggestions using Groq
+        suggestions_prompt = f"""Analyze this LinkedIn post and provide 3 specific, actionable suggestions for improvement. Keep each suggestion brief (under 15 words).
+
+Post: {text[:1000]}
+
+Return only the suggestions as a numbered list, no other text."""
+
+        try:
+            suggestions_response = client.chat.completions.create(
+                messages=[{"role": "user", "content": suggestions_prompt}],
+                model="llama-3.1-8b-instant",
+                temperature=0.7,
+                max_tokens=200
+            )
+            suggestions_text = suggestions_response.choices[0].message.content
+            suggestions = [s.strip() for s in suggestions_text.split('\n') if s.strip() and s.strip()[0].isdigit()]
+        except:
+            suggestions = ["Add more personal experience", "Include a question", "Use relevant hashtags"]
+        
+        # Generate improvement tips
+        tips_prompt = f"""For this LinkedIn post, provide 3 quick tips on how to make it more engaging. Keep each tip under 15 words.
+
+Post: {text[:500]}
+
+Return only the tips as a numbered list."""
+
+        try:
+            tips_response = client.chat.completions.create(
+                messages=[{"role": "user", "content": tips_prompt}],
+                model="llama-3.1-8b-instant",
+                temperature=0.7,
+                max_tokens=200
+            )
+            tips_text = tips_response.choices[0].message.content
+            improvement_tips = [t.strip() for t in tips_text.split('\n') if t.strip() and t.strip()[0].isdigit()]
+        except:
+            improvement_tips = ["Start with a hook", "End with a question", "Add a personal story"]
+        
+        # Generate corrected version
+        corrected_prompt = f"""Improve this LinkedIn post to make it more engaging. Fix any issues with length, questions, hashtags, or emojis. Return only the improved post, no explanations.
+
+Original post: {text}"""
+
+        try:
+            corrected_response = client.chat.completions.create(
+                messages=[{"role": "user", "content": corrected_prompt}],
+                model="llama-3.1-8b-instant",
+                temperature=0.7,
+                max_tokens=1000
+            )
+            corrected_version = corrected_response.choices[0].message.content
+        except:
+            corrected_version = text
         
         return jsonify({
             'success': True,
@@ -338,13 +356,26 @@ def analyze_text():
                 'rating': rating,
                 'summary': summary,
                 'word_count': word_count,
-                'has_question': has_question,
-                'has_hashtags': has_hashtags,
                 'hashtag_count': hashtag_count,
-                'suggestions': suggestions
+                'question_count': question_count,
+                'has_emoji': has_emoji,
+                'suggestions': suggestions[:3],
+                'improvement_tips': improvement_tips[:3],
+                'corrected_version': corrected_version,
+                'original_text': text,
+                'length_status': length_status,
+                'length_message': length_message,
+                'question_status': question_status,
+                'question_message': question_message,
+                'hashtag_status': hashtag_status,
+                'hashtag_message': hashtag_message,
+                'emoji_status': emoji_status,
+                'emoji_message': emoji_message
             }
         })
+        
     except Exception as e:
+        print(f"Error: {e}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/get-history', methods=['GET'])
@@ -398,7 +429,7 @@ def export_pdf():
 
 if __name__ == '__main__':
     print("=" * 50)
-    print("LinkedIn Post Generator Backend")
+    print("LinkedIn Post Generator Backend (Powered by Groq AI)")
     print("Running on http://localhost:5000")
     print("=" * 50)
-    app.run(debug=True, port=5000)
+    app.run(debug=True, port=5000, host='0.0.0.0') 

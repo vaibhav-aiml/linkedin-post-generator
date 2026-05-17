@@ -9,7 +9,6 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('messageForm').addEventListener('submit', generateMessage);
     document.getElementById('darkModeToggle').addEventListener('click', toggleDarkMode);
     
-    // Character counter
     document.getElementById('topic').addEventListener('input', function() {
         let len = this.value.length;
         document.getElementById('charCount').innerText = len;
@@ -99,6 +98,8 @@ async function analyzeText() {
         return;
     }
     
+    document.getElementById('loadingOverlay').style.display = 'flex';
+    
     try {
         let response = await fetch(`${API_BASE_URL}/analyze-text`, {
             method: 'POST',
@@ -109,42 +110,323 @@ async function analyzeText() {
         let data = await response.json();
         
         if (data.success) {
-            let a = data.analysis;
-            let scoreColor = a.score >= 85 ? '#28a745' : (a.score >= 70 ? '#ffc107' : (a.score >= 50 ? '#fd7e14' : '#dc3545'));
-            
-            let html = `
-                <div style="text-align:center; padding:20px; background:${scoreColor}15; border-radius:12px; margin-bottom:20px;">
-                    <div style="font-size:48px; font-weight:bold; color:${scoreColor};">${a.score}%</div>
-                    <div style="font-size:20px; font-weight:bold;">${a.rating}</div>
-                    <div style="color:#666;">${a.summary || ''}</div>
-                </div>
-                <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:20px;">
-                    <div style="background:#f8f9fa; padding:12px; text-align:center; border-radius:8px;">
-                        <div style="font-size:22px; font-weight:bold; color:#8E2DE2;">${a.word_count}</div>
-                        <div style="font-size:12px; color:#666;">Words</div>
-                    </div>
-                    <div style="background:#f8f9fa; padding:12px; text-align:center; border-radius:8px;">
-                        <div style="font-size:22px; font-weight:bold; color:#8E2DE2;">${a.hashtag_count}</div>
-                        <div style="font-size:12px; color:#666;">Hashtags</div>
-                    </div>
-                    <div style="background:#f8f9fa; padding:12px; text-align:center; border-radius:8px;">
-                        <div style="font-size:22px; font-weight:bold; color:#8E2DE2;">${a.has_question ? 'Yes' : 'No'}</div>
-                        <div style="font-size:12px; color:#666;">Question?</div>
-                    </div>
-                </div>
-                ${a.suggestions.length > 0 ? `
-                    <div style="background:#fff3e0; padding:15px; border-radius:10px;">
-                        <strong style="color:#e65100;">Suggestions to Improve:</strong>
-                        <ul style="margin-top:10px;">${a.suggestions.map(s => `<li style="margin-bottom:5px;">${s}</li>`).join('')}</ul>
-                    </div>
-                ` : '<div style="background:#d4edda; padding:15px; border-radius:10px; color:#155724;">Great post! Keep up the good work.</div>'}
-            `;
-            document.getElementById('analysisResult').innerHTML = html;
-            document.getElementById('analysisResult').classList.add('show');
+            displayAnalysis(data.analysis);
+        } else {
+            alert('Analysis failed: ' + (data.error || 'Unknown error'));
         }
     } catch (error) {
-        alert('Error analyzing text');
+        console.error('Error:', error);
+        alert('Error analyzing text. Make sure backend is running.');
     }
+    
+    document.getElementById('loadingOverlay').style.display = 'none';
+}
+
+function displayAnalysis(a) {
+    const analysisDiv = document.getElementById('analysisResult');
+    
+    if (!analysisDiv) return;
+    
+    console.log('Analysis data received:', a);
+    
+    let scoreColor = '#dc3545';
+    let scoreBg = '#f8d7da';
+    if (a.score >= 85) {
+        scoreColor = '#155724';
+        scoreBg = '#d4edda';
+    } else if (a.score >= 70) {
+        scoreColor = '#856404';
+        scoreBg = '#fff3cd';
+    } else if (a.score >= 50) {
+        scoreColor = '#e65100';
+        scoreBg = '#fff3e0';
+    }
+    
+    const getStatusClass = (status) => {
+        if (!status || status === 'No Data') return 'status-missing';
+        if (status === 'Perfect' || status === 'Excellent') return 'status-good';
+        if (status === 'Good') return 'status-good';
+        if (status === 'Too Short' || status === 'Too Long' || status === 'Missing' || status === 'Low') return 'status-missing';
+        if (status === 'Too Many') return 'status-warning';
+        return 'status-warning';
+    };
+    
+    const getStatusIcon = (status) => {
+        if (!status || status === 'No Data') return '❓';
+        if (status === 'Perfect' || status === 'Excellent') return '✅';
+        if (status === 'Good') return '👍';
+        if (status === 'Too Many') return '⚠️';
+        if (status === 'Too Short' || status === 'Too Long' || status === 'Missing' || status === 'Low') return '❌';
+        return '⚠️';
+    };
+    
+    analysisDiv.innerHTML = `
+        <style>
+            .analysis-score-section {
+                text-align: center;
+                padding: 20px;
+                background: ${scoreBg};
+                border-radius: 12px;
+                margin-bottom: 20px;
+            }
+            .analysis-score-number {
+                font-size: 52px;
+                font-weight: bold;
+                color: ${scoreColor};
+            }
+            .analysis-rating {
+                font-size: 24px;
+                font-weight: bold;
+                color: #1a1a2e;
+                margin-top: 8px;
+            }
+            .analysis-summary {
+                color: #495057;
+                margin-top: 8px;
+                font-size: 14px;
+            }
+            .analysis-stats-grid {
+                display: grid;
+                grid-template-columns: repeat(4, 1fr);
+                gap: 12px;
+                margin-bottom: 20px;
+            }
+            .analysis-stat-card {
+                background: #f8f9fa;
+                padding: 12px;
+                border-radius: 8px;
+                text-align: center;
+            }
+            .analysis-stat-value {
+                font-size: 22px;
+                font-weight: bold;
+                color: #8E2DE2;
+            }
+            .analysis-stat-label {
+                font-size: 11px;
+                color: #6c757d;
+                margin-top: 5px;
+            }
+            .analysis-status-section {
+                background: white;
+                border-radius: 12px;
+                padding: 15px;
+                margin-bottom: 20px;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            }
+            .analysis-status-title {
+                font-size: 16px;
+                font-weight: 700;
+                margin-bottom: 12px;
+                color: #1a1a2e;
+                border-left: 3px solid #8E2DE2;
+                padding-left: 10px;
+            }
+            .status-good {
+                background: #d4edda;
+                color: #155724;
+                padding: 10px 12px;
+                border-radius: 8px;
+                margin-bottom: 8px;
+                font-size: 13px;
+            }
+            .status-warning {
+                background: #fff3cd;
+                color: #856404;
+                padding: 10px 12px;
+                border-radius: 8px;
+                margin-bottom: 8px;
+                font-size: 13px;
+            }
+            .status-missing {
+                background: #f8d7da;
+                color: #721c24;
+                padding: 10px 12px;
+                border-radius: 8px;
+                margin-bottom: 8px;
+                font-size: 13px;
+            }
+            .analysis-suggestions-box {
+                background: #e8f5e9;
+                padding: 15px;
+                border-radius: 10px;
+                margin-bottom: 20px;
+                border-left: 4px solid #4caf50;
+            }
+            .analysis-improvement-box {
+                background: #fff3e0;
+                padding: 15px;
+                border-radius: 10px;
+                margin-bottom: 20px;
+                border-left: 4px solid #ff9800;
+            }
+            .analysis-corrected-box {
+                background: #e3f2fd;
+                padding: 15px;
+                border-radius: 10px;
+                margin-bottom: 20px;
+                border-left: 4px solid #2196f3;
+            }
+            .analysis-section-title {
+                font-weight: 700;
+                margin-bottom: 10px;
+                color: #1a1a2e;
+                font-size: 14px;
+            }
+            .corrected-text {
+                background: #f0f7ff;
+                padding: 12px;
+                border-radius: 8px;
+                font-family: monospace;
+                font-size: 13px;
+                line-height: 1.5;
+                white-space: pre-wrap;
+                margin-top: 10px;
+                max-height: 200px;
+                overflow-y: auto;
+            }
+            .copy-corrected-btn {
+                background: #2196f3;
+                color: white;
+                border: none;
+                padding: 8px 15px;
+                border-radius: 5px;
+                cursor: pointer;
+                margin-top: 10px;
+                font-size: 12px;
+                display: inline-flex;
+                align-items: center;
+                gap: 5px;
+            }
+            .copy-corrected-btn:hover {
+                background: #1976d2;
+            }
+            body.dark-mode .analysis-status-section {
+                background: #1e1e2e;
+            }
+            body.dark-mode .analysis-stat-card {
+                background: #2d2d3d;
+            }
+            body.dark-mode .analysis-stat-value {
+                color: #a78bfa;
+            }
+            body.dark-mode .analysis-stat-label {
+                color: #a0a0a0;
+            }
+            body.dark-mode .analysis-status-title {
+                color: #e0e0e0;
+            }
+            body.dark-mode .analysis-summary {
+                color: #c0c0c0;
+            }
+            body.dark-mode .analysis-rating {
+                color: #e0e0e0;
+            }
+            body.dark-mode .corrected-text {
+                background: #2d2d3d;
+                color: #e0e0e0;
+            }
+        </style>
+        
+        <div class="analysis-score-section">
+            <div class="analysis-score-number">${a.score || 0}%</div>
+            <div class="analysis-rating">${a.rating || 'No Rating'}</div>
+            <div class="analysis-summary">${a.summary || ''}</div>
+        </div>
+        
+        <div class="analysis-stats-grid">
+            <div class="analysis-stat-card">
+                <div class="analysis-stat-value">${a.word_count || 0}</div>
+                <div class="analysis-stat-label">Words</div>
+            </div>
+            <div class="analysis-stat-card">
+                <div class="analysis-stat-value">${a.hashtag_count || 0}</div>
+                <div class="analysis-stat-label">Hashtags</div>
+            </div>
+            <div class="analysis-stat-card">
+                <div class="analysis-stat-value">${a.question_count || 0}</div>
+                <div class="analysis-stat-label">Questions</div>
+            </div>
+            <div class="analysis-stat-card">
+                <div class="analysis-stat-value">${a.has_emoji ? 'Yes' : 'No'}</div>
+                <div class="analysis-stat-label">Emojis</div>
+            </div>
+        </div>
+        
+        <div class="analysis-status-section">
+            <div class="analysis-status-title">Detailed Breakdown</div>
+            
+            <div class="${getStatusClass(a.length_status)}">
+                ${getStatusIcon(a.length_status)} <strong>Length:</strong> ${a.length_status || 'Unknown'} - ${a.length_message || 'Check your word count'}
+            </div>
+            
+            <div class="${getStatusClass(a.question_status)}">
+                ${getStatusIcon(a.question_status)} <strong>Questions:</strong> ${a.question_status || 'Unknown'} - ${a.question_message || 'Add a question to engage readers'}
+            </div>
+            
+            <div class="${getStatusClass(a.hashtag_status)}">
+                ${getStatusIcon(a.hashtag_status)} <strong>Hashtags:</strong> ${a.hashtag_status || 'Unknown'} - ${a.hashtag_message || 'Add 3-5 relevant hashtags'}
+            </div>
+            
+            <div class="${getStatusClass(a.emoji_status)}">
+                ${getStatusIcon(a.emoji_status)} <strong>Emojis:</strong> ${a.emoji_status || 'Unknown'} - ${a.emoji_message || 'Add emojis for visual appeal'}
+            </div>
+        </div>
+    `;
+    
+    if (a.suggestions && a.suggestions.length > 0) {
+        analysisDiv.innerHTML += `
+            <div class="analysis-suggestions-box">
+                <div class="analysis-section-title">What to Improve</div>
+                <ul style="margin: 0; padding-left: 20px;">
+                    ${a.suggestions.map(s => `<li style="margin-bottom: 8px;">${s}</li>`).join('')}
+                </ul>
+            </div>
+        `;
+    }
+    
+    if (a.improvement_tips && a.improvement_tips.length > 0) {
+        analysisDiv.innerHTML += `
+            <div class="analysis-improvement-box">
+                <div class="analysis-section-title">How to Improve</div>
+                <ul style="margin: 0; padding-left: 20px;">
+                    ${a.improvement_tips.map(t => `<li style="margin-bottom: 8px;">${t}</li>`).join('')}
+                </ul>
+            </div>
+        `;
+    }
+    
+    if (a.corrected_version && a.corrected_version !== a.original_text && a.corrected_version !== 'No post to correct. Please paste your LinkedIn post above.') {
+        analysisDiv.innerHTML += `
+            <div class="analysis-corrected-box">
+                <div class="analysis-section-title">Improved Version (Copy-Paste Ready)</div>
+                <div class="corrected-text" id="correctedText">${escapeHtml(a.corrected_version)}</div>
+                <button class="copy-corrected-btn" onclick="copyCorrectedVersion()">
+                    Copy Improved Version
+                </button>
+            </div>
+        `;
+    }
+    
+    analysisDiv.classList.add('show');
+}
+
+function copyCorrectedVersion() {
+    const correctedText = document.getElementById('correctedText');
+    if (correctedText) {
+        navigator.clipboard.writeText(correctedText.innerText).then(() => {
+            alert('Improved version copied to clipboard!');
+        }).catch(() => {
+            alert('Failed to copy. Please select and copy manually.');
+        });
+    }
+}
+
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }
 
 async function loadHistory() {
@@ -152,25 +434,21 @@ async function loadHistory() {
         let response = await fetch(`${API_BASE_URL}/get-history`);
         let data = await response.json();
         
-        console.log('History loaded:', data);
-        
         let historyDiv = document.getElementById('historyList');
         
         if (data.history && data.history.length > 0) {
             historyDiv.innerHTML = data.history.map(post => `
                 <div class="history-item" onclick="viewPost(${post.id})" style="padding:12px; border-bottom:1px solid #e0e0e0; cursor:pointer;">
                     <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
-                        <strong style="color:#8E2DE2;">${post.topic}</strong>
+                        <strong style="color:#8E2DE2;">${escapeHtml(post.topic)}</strong>
                         <small style="color:#999;">${post.date}</small>
                     </div>
-                    <div style="font-size:12px; color:#666;">${post.content.substring(0, 100)}...</div>
+                    <div style="font-size:12px; color:#666;">${escapeHtml(post.content.substring(0, 100))}...</div>
                 </div>
             `).join('');
             
-            // Update analytics numbers
             document.getElementById('totalPosts').innerText = data.history.length;
             
-            // Count topic frequency
             let topics = {};
             let types = {};
             data.history.forEach(post => {
@@ -178,31 +456,24 @@ async function loadHistory() {
                 types[post.type] = (types[post.type] || 0) + 1;
             });
             
-            // Most used topic
             let mostTopic = Object.keys(topics).reduce((a,b) => topics[a] > topics[b] ? a : b, 'None');
             document.getElementById('mostUsedTopic').innerText = mostTopic;
             
-            // Popular type
             let typeNames = {'professional':'Professional','networking':'Networking','tech':'Technology','marketing':'Marketing','leadership':'Leadership','career':'Career'};
             let mostType = Object.keys(types).reduce((a,b) => types[a] > types[b] ? a : b, 'professional');
             document.getElementById('popularType').innerText = typeNames[mostType] || mostType;
             
-            // Average length
             let totalLen = data.history.reduce((sum, p) => sum + p.content.length, 0);
             let avgLen = Math.round(totalLen / data.history.length);
             document.getElementById('avgLength').innerText = avgLen;
             
-            // Create charts with colors
             createCharts(types, data.history);
-            
         } else {
             historyDiv.innerHTML = '<p class="text-muted" style="text-align:center; padding:20px;">No posts yet. Generate your first post!</p>';
             document.getElementById('totalPosts').innerText = '0';
             document.getElementById('mostUsedTopic').innerText = '-';
             document.getElementById('popularType').innerText = '-';
             document.getElementById('avgLength').innerText = '0';
-            
-            // Show empty charts message
             showEmptyCharts();
         }
     } catch (error) {
@@ -211,7 +482,6 @@ async function loadHistory() {
 }
 
 function createCharts(types, history) {
-    // Wait for Chart.js to be available
     if (typeof Chart === 'undefined') {
         let script = document.createElement('script');
         script.src = 'https://cdn.jsdelivr.net/npm/chart.js';
@@ -223,116 +493,25 @@ function createCharts(types, history) {
 }
 
 function renderCharts(types, history) {
-    // Color palette
-    const colors = ['#8E2DE2', '#4A00E0', '#f093fb', '#f5576c', '#4facfe', '#00f2fe', '#43e97b', '#fa709a'];
+    const colors = ['#8E2DE2', '#4A00E0', '#f093fb', '#f5576c', '#4facfe', '#00f2fe', '#43e97b'];
+    const typeNames = {'professional':'Professional','networking':'Networking','tech':'Technology','marketing':'Marketing','leadership':'Leadership','career':'Career'};
     
-    // Type names for display
-    const typeNames = {
-        'professional': 'Professional',
-        'networking': 'Networking',
-        'achievement': 'Achievement',
-        'tech': 'Technology',
-        'marketing': 'Marketing',
-        'leadership': 'Leadership',
-        'career': 'Career'
-    };
-    
-    // Prepare data for pie chart
     let labels = Object.keys(types).map(t => typeNames[t] || t);
     let data = Object.values(types);
     
-    // If no data, use sample data for demo
     if (labels.length === 0) {
         labels = ['Professional', 'Technology', 'Marketing', 'Leadership'];
         data = [4, 3, 2, 2];
     }
     
-    // Pie Chart - Posts by Type
     let pieCtx = document.getElementById('postsByTypeChart');
     if (pieCtx) {
         if (window.pieChart) window.pieChart.destroy();
         window.pieChart = new Chart(pieCtx, {
             type: 'pie',
-            data: {
-                labels: labels,
-                datasets: [{
-                    data: data,
-                    backgroundColor: colors.slice(0, labels.length),
-                    borderWidth: 2,
-                    borderColor: '#fff'
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: true,
-                plugins: {
-                    legend: {
-                        position: 'bottom',
-                        labels: { font: { size: 11, weight: 'bold' } }
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                let label = context.label || '';
-                                let value = context.raw || 0;
-                                let total = context.dataset.data.reduce((a,b) => a + b, 0);
-                                let percent = ((value / total) * 100).toFixed(1);
-                                return `${label}: ${value} posts (${percent}%)`;
-                            }
-                        }
-                    }
-                }
-            }
+            data: { labels: labels, datasets: [{ data: data, backgroundColor: colors.slice(0, labels.length), borderWidth: 2, borderColor: '#fff' }] },
+            options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { position: 'bottom' } } }
         });
-    }
-    
-    // Line Chart - Timeline
-    let timelineCtx = document.getElementById('timelineChart');
-    if (timelineCtx && history.length > 0) {
-        if (window.lineChart) window.lineChart.destroy();
-        
-        // Group by date
-        let postsByDate = {};
-        history.forEach(post => {
-            let date = post.date.split(' ')[0];
-            postsByDate[date] = (postsByDate[date] || 0) + 1;
-        });
-        
-        let dates = Object.keys(postsByDate).slice(-7);
-        let counts = dates.map(d => postsByDate[d]);
-        
-        window.lineChart = new Chart(timelineCtx, {
-            type: 'line',
-            data: {
-                labels: dates,
-                datasets: [{
-                    label: 'Posts Created',
-                    data: counts,
-                    borderColor: '#8E2DE2',
-                    backgroundColor: 'rgba(142, 45, 226, 0.1)',
-                    borderWidth: 3,
-                    tension: 0.4,
-                    fill: true,
-                    pointBackgroundColor: '#8E2DE2',
-                    pointBorderColor: '#fff',
-                    pointRadius: 5,
-                    pointHoverRadius: 7
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: true,
-                plugins: {
-                    legend: { position: 'top' },
-                    tooltip: { callbacks: { label: (ctx) => `${ctx.raw} posts` } }
-                },
-                scales: {
-                    y: { beginAtZero: true, ticks: { stepSize: 1, precision: 0 } }
-                }
-            }
-        });
-    } else if (timelineCtx) {
-        showEmptyCharts();
     }
 }
 
@@ -346,14 +525,6 @@ function showEmptyCharts() {
         ctx.font = '14px Arial';
         ctx.fillStyle = '#999';
         ctx.fillText('Generate posts to see chart', pieCtx.width/2 - 100, pieCtx.height/2);
-    }
-    
-    if (timelineCtx && !window.lineChart) {
-        let ctx = timelineCtx.getContext('2d');
-        ctx.clearRect(0, 0, timelineCtx.width, timelineCtx.height);
-        ctx.font = '14px Arial';
-        ctx.fillStyle = '#999';
-        ctx.fillText('Generate posts to see timeline', timelineCtx.width/2 - 100, timelineCtx.height/2);
     }
 }
 
@@ -408,7 +579,7 @@ function loadFavorites() {
     
     container.innerHTML = favs.map((fav, i) => `
         <div class="favorite-item" onclick="loadFavorite(${i})" style="padding:12px; border-bottom:1px solid #e0e0e0; cursor:pointer; display:flex; justify-content:space-between;">
-            <div><strong style="color:#8E2DE2;">${fav.topic}</strong> <small>${fav.type}</small></div>
+            <div><strong style="color:#8E2DE2;">${escapeHtml(fav.topic)}</strong> <small>${fav.type}</small></div>
             <small style="color:#999;">${fav.date}</small>
         </div>
     `).join('');
@@ -421,7 +592,6 @@ function loadFavorite(index) {
         document.getElementById('topic').value = fav.topic;
         document.getElementById('postType').value = fav.type;
         alert('Favorite loaded! Click Generate Post');
-        // Trigger character counter
         let event = new Event('input');
         document.getElementById('topic').dispatchEvent(event);
     }
@@ -476,13 +646,11 @@ function toggleDarkMode() {
     }
 }
 
-// Load dark mode preference
 if (localStorage.getItem('darkMode') === 'true') {
     document.body.classList.add('dark-mode');
     document.getElementById('darkModeToggle').innerHTML = '<i class="fas fa-sun"></i>';
 }
 
-// Make functions global
 window.analyzeText = analyzeText;
 window.clearHistory = clearHistory;
 window.viewPost = viewPost;
@@ -491,3 +659,4 @@ window.loadFavorite = loadFavorite;
 window.shareToLinkedIn = shareToLinkedIn;
 window.exportAsPDF = exportAsPDF;
 window.exportAsImage = exportAsImage;
+window.copyCorrectedVersion = copyCorrectedVersion;
