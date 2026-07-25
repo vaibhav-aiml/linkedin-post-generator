@@ -1,4 +1,4 @@
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_BASE_URL = window.location.port === '5000' ? 'http://localhost:5000/api' : 'http://localhost:8000/api';
 
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Frontend loaded');
