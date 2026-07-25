@@ -241,291 +241,67 @@ async function analyzeText() {
 
 function displayAnalysis(a) {
     const analysisDiv = document.getElementById('analysisResult');
-    
     if (!analysisDiv) return;
-    
+
     console.log('Analysis data received:', a);
-    
-    let scoreColor = '#dc3545';
-    let scoreBg = '#f8d7da';
-    if (a.score >= 85) {
-        scoreColor = '#155724';
-        scoreBg = '#d4edda';
-    } else if (a.score >= 70) {
-        scoreColor = '#856404';
-        scoreBg = '#fff3cd';
-    } else if (a.score >= 50) {
-        scoreColor = '#e65100';
-        scoreBg = '#fff3e0';
-    }
-    
-    const getStatusClass = (status) => {
-        if (!status || status === 'No Data') return 'status-missing';
-        if (status === 'Perfect' || status === 'Excellent') return 'status-good';
-        if (status === 'Good') return 'status-good';
-        if (status === 'Too Short' || status === 'Too Long' || status === 'Missing' || status === 'Low') return 'status-missing';
-        if (status === 'Too Many') return 'status-warning';
-        return 'status-warning';
-    };
-    
-    const getStatusIcon = (status) => {
-        if (!status || status === 'No Data') return '❓';
-        if (status === 'Perfect' || status === 'Excellent') return '✅';
-        if (status === 'Good') return '👍';
-        if (status === 'Too Many') return '⚠️';
-        if (status === 'Too Short' || status === 'Too Long' || status === 'Missing' || status === 'Low') return '❌';
-        return '⚠️';
-    };
-    
+
     analysisDiv.innerHTML = `
-        <style>
-            .analysis-score-section {
-                text-align: center;
-                padding: 20px;
-                background: ${scoreBg};
-                border-radius: 12px;
-                margin-bottom: 20px;
-            }
-            .analysis-score-number {
-                font-size: 52px;
-                font-weight: bold;
-                color: ${scoreColor};
-            }
-            .analysis-rating {
-                font-size: 24px;
-                font-weight: bold;
-                color: #1a1a2e;
-                margin-top: 8px;
-            }
-            .analysis-summary {
-                color: #495057;
-                margin-top: 8px;
-                font-size: 14px;
-            }
-            .analysis-stats-grid {
-                display: grid;
-                grid-template-columns: repeat(4, 1fr);
-                gap: 12px;
-                margin-bottom: 20px;
-            }
-            .analysis-stat-card {
-                background: #f8f9fa;
-                padding: 12px;
-                border-radius: 8px;
-                text-align: center;
-            }
-            .analysis-stat-value {
-                font-size: 22px;
-                font-weight: bold;
-                color: #8E2DE2;
-            }
-            .analysis-stat-label {
-                font-size: 11px;
-                color: #6c757d;
-                margin-top: 5px;
-            }
-            .analysis-status-section {
-                background: white;
-                border-radius: 12px;
-                padding: 15px;
-                margin-bottom: 20px;
-                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            }
-            .analysis-status-title {
-                font-size: 16px;
-                font-weight: 700;
-                margin-bottom: 12px;
-                color: #1a1a2e;
-                border-left: 3px solid #8E2DE2;
-                padding-left: 10px;
-            }
-            .status-good {
-                background: #d4edda;
-                color: #155724;
-                padding: 10px 12px;
-                border-radius: 8px;
-                margin-bottom: 8px;
-                font-size: 13px;
-            }
-            .status-warning {
-                background: #fff3cd;
-                color: #856404;
-                padding: 10px 12px;
-                border-radius: 8px;
-                margin-bottom: 8px;
-                font-size: 13px;
-            }
-            .status-missing {
-                background: #f8d7da;
-                color: #721c24;
-                padding: 10px 12px;
-                border-radius: 8px;
-                margin-bottom: 8px;
-                font-size: 13px;
-            }
-            .analysis-suggestions-box {
-                background: #e8f5e9;
-                padding: 15px;
-                border-radius: 10px;
-                margin-bottom: 20px;
-                border-left: 4px solid #4caf50;
-            }
-            .analysis-improvement-box {
-                background: #fff3e0;
-                padding: 15px;
-                border-radius: 10px;
-                margin-bottom: 20px;
-                border-left: 4px solid #ff9800;
-            }
-            .analysis-corrected-box {
-                background: #e3f2fd;
-                padding: 15px;
-                border-radius: 10px;
-                margin-bottom: 20px;
-                border-left: 4px solid #2196f3;
-            }
-            .analysis-section-title {
-                font-weight: 700;
-                margin-bottom: 10px;
-                color: #1a1a2e;
-                font-size: 14px;
-            }
-            .corrected-text {
-                background: #f0f7ff;
-                padding: 12px;
-                border-radius: 8px;
-                font-family: monospace;
-                font-size: 13px;
-                line-height: 1.5;
-                white-space: pre-wrap;
-                margin-top: 10px;
-                max-height: 200px;
-                overflow-y: auto;
-            }
-            .copy-corrected-btn {
-                background: #2196f3;
-                color: white;
-                border: none;
-                padding: 8px 15px;
-                border-radius: 5px;
-                cursor: pointer;
-                margin-top: 10px;
-                font-size: 12px;
-                display: inline-flex;
-                align-items: center;
-                gap: 5px;
-            }
-            .copy-corrected-btn:hover {
-                background: #1976d2;
-            }
-            body.dark-mode .analysis-status-section {
-                background: #1e1e2e;
-            }
-            body.dark-mode .analysis-stat-card {
-                background: #2d2d3d;
-            }
-            body.dark-mode .analysis-stat-value {
-                color: #a78bfa;
-            }
-            body.dark-mode .analysis-stat-label {
-                color: #a0a0a0;
-            }
-            body.dark-mode .analysis-status-title {
-                color: #e0e0e0;
-            }
-            body.dark-mode .analysis-summary {
-                color: #c0c0c0;
-            }
-            body.dark-mode .analysis-rating {
-                color: #e0e0e0;
-            }
-            body.dark-mode .corrected-text {
-                background: #2d2d3d;
-                color: #e0e0e0;
-            }
-        </style>
-        
-        <div class="analysis-score-section">
-            <div class="analysis-score-number">${a.score || 0}%</div>
-            <div class="analysis-rating">${a.rating || 'No Rating'}</div>
-            <div class="analysis-summary">${a.summary || ''}</div>
-        </div>
-        
-        <div class="analysis-stats-grid">
-            <div class="analysis-stat-card">
-                <div class="analysis-stat-value">${a.word_count || 0}</div>
-                <div class="analysis-stat-label">Words</div>
+        <div class="quality-stamp-hero">
+            <div class="quality-seal-badge">
+                <div class="seal-score-number">${a.score || 0}%</div>
+                <div class="seal-score-label">QUALITY SCORE</div>
             </div>
-            <div class="analysis-stat-card">
-                <div class="analysis-stat-value">${a.hashtag_count || 0}</div>
-                <div class="analysis-stat-label">Hashtags</div>
-            </div>
-            <div class="analysis-stat-card">
-                <div class="analysis-stat-value">${a.question_count || 0}</div>
-                <div class="analysis-stat-label">Questions</div>
-            </div>
-            <div class="analysis-stat-card">
-                <div class="analysis-stat-value">${a.has_emoji ? 'Yes' : 'No'}</div>
-                <div class="analysis-stat-label">Emojis</div>
+            <div class="seal-details">
+                <div class="seal-rating-title">${escapeHtml(a.rating || 'Audit Completed')}</div>
+                <div class="seal-summary-text">${escapeHtml(a.summary || '')}</div>
             </div>
         </div>
-        
-        <div class="analysis-status-section">
-            <div class="analysis-status-title">Detailed Breakdown</div>
-            
-            <div class="${getStatusClass(a.length_status)}">
-                ${getStatusIcon(a.length_status)} <strong>Length:</strong> ${a.length_status || 'Unknown'} - ${a.length_message || 'Check your word count'}
+
+        <div class="breakdown-grid">
+            <div class="breakdown-card">
+                <div class="breakdown-val">${a.word_count || 0}</div>
+                <div class="breakdown-lbl">Words Count</div>
             </div>
-            
-            <div class="${getStatusClass(a.question_status)}">
-                ${getStatusIcon(a.question_status)} <strong>Questions:</strong> ${a.question_status || 'Unknown'} - ${a.question_message || 'Add a question to engage readers'}
+            <div class="breakdown-card">
+                <div class="breakdown-val">${a.hashtag_count || 0}</div>
+                <div class="breakdown-lbl">Hashtags</div>
             </div>
-            
-            <div class="${getStatusClass(a.hashtag_status)}">
-                ${getStatusIcon(a.hashtag_status)} <strong>Hashtags:</strong> ${a.hashtag_status || 'Unknown'} - ${a.hashtag_message || 'Add 3-5 relevant hashtags'}
+            <div class="breakdown-card">
+                <div class="breakdown-val">${a.question_count || 0}</div>
+                <div class="breakdown-lbl">Questions</div>
             </div>
-            
-            <div class="${getStatusClass(a.emoji_status)}">
-                ${getStatusIcon(a.emoji_status)} <strong>Emojis:</strong> ${a.emoji_status || 'Unknown'} - ${a.emoji_message || 'Add emojis for visual appeal'}
+            <div class="breakdown-card">
+                <div class="breakdown-val">${a.has_emoji ? 'Yes' : 'No'}</div>
+                <div class="breakdown-lbl">Emoji Elements</div>
             </div>
         </div>
-    `;
-    
-    if (a.suggestions && a.suggestions.length > 0) {
-        analysisDiv.innerHTML += `
-            <div class="analysis-suggestions-box">
-                <div class="analysis-section-title">What to Improve</div>
-                <ul style="margin: 0; padding-left: 20px;">
-                    ${a.suggestions.map(s => `<li style="margin-bottom: 8px;">${s}</li>`).join('')}
-                </ul>
+
+        ${a.suggestions && a.suggestions.length > 0 ? `
+            <div class="audit-box">
+                <div class="audit-box-title"><i class="fas fa-lightbulb"></i> Actionable Suggestions</div>
+                <ul>${a.suggestions.map(s => `<li>${escapeHtml(s)}</li>`).join('')}</ul>
             </div>
-        `;
-    }
-    
-    if (a.improvement_tips && a.improvement_tips.length > 0) {
-        analysisDiv.innerHTML += `
-            <div class="analysis-improvement-box">
-                <div class="analysis-section-title">How to Improve</div>
-                <ul style="margin: 0; padding-left: 20px;">
-                    ${a.improvement_tips.map(t => `<li style="margin-bottom: 8px;">${t}</li>`).join('')}
-                </ul>
+        ` : ''}
+
+        ${a.improvement_tips && a.improvement_tips.length > 0 ? `
+            <div class="audit-box improvement">
+                <div class="audit-box-title"><i class="fas fa-chart-line"></i> Engagement Tips</div>
+                <ul>${a.improvement_tips.map(t => `<li>${escapeHtml(t)}</li>`).join('')}</ul>
             </div>
-        `;
-    }
-    
-    if (a.corrected_version && a.corrected_version !== a.original_text && a.corrected_version !== 'No post to correct. Please paste your LinkedIn post above.') {
-        analysisDiv.innerHTML += `
-            <div class="analysis-corrected-box">
-                <div class="analysis-section-title">Improved Version (Copy-Paste Ready)</div>
-                <div class="corrected-text" id="correctedText">${escapeHtml(a.corrected_version)}</div>
-                <button class="copy-corrected-btn" onclick="copyCorrectedVersion()">
-                    Copy Improved Version
+        ` : ''}
+
+        ${a.corrected_version && a.corrected_version !== a.original_text ? `
+            <div class="audit-box corrected">
+                <div class="audit-box-title"><i class="fas fa-magic"></i> AI Improved Version</div>
+                <div class="corrected-text-block" id="correctedText">${escapeHtml(a.corrected_version)}</div>
+                <button class="paper-btn copy" style="margin-top:12px;" onclick="copyCorrectedVersion()">
+                    <i class="fas fa-copy"></i> Copy Improved Version
                 </button>
             </div>
-        `;
-    }
-    
-    analysisDiv.classList.add('show');
+        ` : ''}
+    `;
+
+    analysisDiv.style.display = 'block';
 }
 
 function copyCorrectedVersion() {
@@ -605,7 +381,7 @@ function createCharts(types, history) {
 }
 
 function renderCharts(types, history) {
-    const colors = ['#8E2DE2', '#4A00E0', '#f093fb', '#f5576c', '#4facfe', '#00f2fe', '#43e97b'];
+    const colors = ['#2B5278', '#C49A45', '#3A6B9B', '#D97706', '#059669', '#6366F1', '#8B5CF6'];
     const typeNames = {'professional':'Professional','networking':'Networking','tech':'Technology','marketing':'Marketing','leadership':'Leadership','career':'Career'};
     
     let labels = Object.keys(types).map(t => typeNames[t] || t);
@@ -620,9 +396,59 @@ function renderCharts(types, history) {
     if (pieCtx) {
         if (window.pieChart) window.pieChart.destroy();
         window.pieChart = new Chart(pieCtx, {
-            type: 'pie',
-            data: { labels: labels, datasets: [{ data: data, backgroundColor: colors.slice(0, labels.length), borderWidth: 2, borderColor: '#fff' }] },
-            options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { position: 'bottom' } } }
+            type: 'doughnut',
+            data: { 
+                labels: labels, 
+                datasets: [{ 
+                    data: data, 
+                    backgroundColor: colors.slice(0, labels.length), 
+                    borderWidth: 2, 
+                    borderColor: 'transparent' 
+                }] 
+            },
+            options: { 
+                responsive: true, 
+                maintainAspectRatio: false, 
+                plugins: { 
+                    legend: { 
+                        position: 'bottom',
+                        labels: { font: { family: 'Plus Jakarta Sans', size: 11 } }
+                    } 
+                } 
+            }
+        });
+    }
+
+    let timelineCtx = document.getElementById('timelineChart');
+    if (timelineCtx) {
+        if (window.timelineChartObj) window.timelineChartObj.destroy();
+        let timelineLabels = (history || []).slice(-7).map(p => p.date ? p.date.split(' ')[0] : 'Recent');
+        if (timelineLabels.length === 0) timelineLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+        let timelineData = (history || []).slice(-7).map((_, i) => i + 1);
+        if (timelineData.length === 0) timelineData = [1, 2, 1, 3, 2, 4, 3];
+
+        window.timelineChartObj = new Chart(timelineCtx, {
+            type: 'line',
+            data: {
+                labels: timelineLabels,
+                datasets: [{
+                    label: 'Drafts Created',
+                    data: timelineData,
+                    borderColor: '#2B5278',
+                    backgroundColor: 'rgba(43, 82, 120, 0.1)',
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { grid: { display: false } },
+                    y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' } }
+                }
+            }
         });
     }
 }
