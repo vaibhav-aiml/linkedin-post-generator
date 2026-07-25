@@ -599,8 +599,8 @@ async function loadHistory() {
     }
 }
 
-        renderCharts(types, history);
-    }
+function createCharts(types, history) {
+    renderCharts(types, history);
 }
 
 function renderCharts(types, history) {
