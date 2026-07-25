@@ -11,10 +11,13 @@ services:
       - ENVIRONMENT=production
       - DEBUG=False
       - PORT=8000
-      - DATABASE_URL=postgresql://postgres:postgres_password@db:5432/linkedin_db
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-linkedin_db}
       - GROQ_API_KEY=${GROQ_API_KEY}
-      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-super-secret-jwt-key}
-      - CORS_ORIGINS=http://localhost:3000,http://localhost:5173,http://localhost:8000
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - SECRET_KEY=${SECRET_KEY}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000,http://localhost:5173,http://localhost:8000}
     depends_on:
       db:
         condition: service_healthy
@@ -24,15 +27,15 @@ services:
     container_name: linkedin_post_generator_db
     restart: always
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres_password
-      POSTGRES_DB: linkedin_db
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-linkedin_db}
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
       interval: 5s
       timeout: 5s
       retries: 5

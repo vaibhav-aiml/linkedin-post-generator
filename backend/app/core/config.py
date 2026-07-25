@@ -1,6 +1,6 @@
 import os
+import warnings
 from typing import List, Union
-from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -45,3 +45,8 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+# Validate insecure defaults in production
+if settings.ENVIRONMENT.lower() == "production":
+    if "dev-secret" in settings.SECRET_KEY or "dev-jwt" in settings.JWT_SECRET_KEY:
+        warnings.warn("SECURITY WARNING: Using placeholder secret keys in production! Set SECRET_KEY and JWT_SECRET_KEY in environment variables.")

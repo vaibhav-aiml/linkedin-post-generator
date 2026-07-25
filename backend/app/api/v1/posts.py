@@ -97,7 +97,9 @@ def get_history(
 ):
     query = db.query(Post)
     if current_user:
-        query = query.filter((Post.user_id == current_user.id) | (Post.user_id == None))
+        query = query.filter(Post.user_id == current_user.id)
+    else:
+        query = query.filter(Post.user_id == None)
     
     posts = query.order_by(Post.id.desc()).limit(50).all()
     history = [
@@ -121,8 +123,16 @@ def get_post(
 ):
     post = db.query(Post).filter(Post.id == post_id).first()
     if not post:
-        raise HTTPException(status_code=404, detail="Post not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post not found")
     
+    # Ownership authorization check (Fixes IDOR vulnerability)
+    if post.user_id is not None:
+        if not current_user or current_user.id != post.user_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied: You do not have permission to view this post"
+            )
+
     return {
         "success": True,
         "post": {
@@ -138,14 +148,9 @@ def get_post(
 @router.delete("/delete-history")
 def delete_history(
     db: Session = Depends(get_db),
-    current_user: Optional[User] = Depends(get_current_user_optional)
+    current_user: User = Depends(get_current_user)  # Requires authentication
 ):
-    query = db.query(Post)
-    if current_user:
-        query.filter(Post.user_id == current_user.id).delete(synchronize_session=False)
-    else:
-        query.filter(Post.user_id == None).delete(synchronize_session=False)
-    
+    db.query(Post).filter(Post.user_id == current_user.id).delete(synchronize_session=False)
     db.commit()
     return {"success": True, "message": "History cleared"}
 

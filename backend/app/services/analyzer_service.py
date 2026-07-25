@@ -119,23 +119,42 @@ class AnalyzerService:
             rating = "Needs Work"
             summary = "Significant improvements needed"
 
-        suggestions = [
-            "Start with a strong hook in line 1",
-            "Include a clear question at the end to drive comments",
-            "Use 3-5 relevant hashtags to increase discoverability"
-        ]
+        # Base suggestions
+        suggestions = []
+        if word_count < 150:
+            suggestions.append("Expand your post with concrete examples or key takeaways")
+        if question_count == 0:
+            suggestions.append("Include a compelling call-to-action question at the end")
+        if hashtag_count < 3:
+            suggestions.append("Add 3-5 industry-specific hashtags for discoverability")
+        if not suggestions:
+            suggestions = [
+                "Hook readers early in the first line",
+                "Ensure short paragraph spacing for mobile readability",
+                "Share actionable metrics to increase shareability"
+            ]
 
         tips = [
-            "Keep line breaks short (1-2 sentences per paragraph)",
-            "Share a personal story or specific metric for authenticity",
-            "Tag relevant people or companies if appropriate"
+            "Break long blocks into 1-2 sentence paragraphs",
+            "Use bullet points for lists to improve scannability",
+            "Tag relevant experts or organizations to expand reach"
         ]
 
+        # Dynamic AI Rewriting
         corrected_version = text
-        if question_count == 0:
-            corrected_version += "\n\nWhat are your thoughts on this? Share below!"
-        if hashtag_count == 0:
-            corrected_version += "\n\n#ProfessionalGrowth #CareerAdvice #Leadership"
+        try:
+            llm = LLMFactory.get_provider()
+            prompt = f"Improve this LinkedIn post for higher engagement, fixing length, readability, questions, and hashtags. Return ONLY the improved post:\n\n{text}"
+            if hasattr(llm, "client") or type(llm).__name__ != "MockLLMProvider":
+                corrected_version = llm.generate_post(topic="LinkedIn Post Optimization", post_type="professional", length="medium", tone="insightful")
+        except Exception:
+            pass
+
+        if corrected_version == text:
+            if question_count == 0:
+                corrected_version += "\n\nWhat are your thoughts on this? Share below! 👇"
+            if hashtag_count < 3:
+                corrected_version += "\n\n#ProfessionalGrowth #CareerAdvice #Leadership"
 
         return AnalysisMetrics(
             score=score,
@@ -145,8 +164,8 @@ class AnalyzerService:
             hashtag_count=hashtag_count,
             question_count=question_count,
             has_emoji=has_emoji,
-            suggestions=suggestions,
-            improvement_tips=tips,
+            suggestions=suggestions[:3],
+            improvement_tips=tips[:3],
             corrected_version=corrected_version,
             original_text=text,
             length_status=length_status,

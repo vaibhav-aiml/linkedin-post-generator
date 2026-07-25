@@ -1,6 +1,6 @@
 # LinkedIn Post Generator 🚀
 
-A production-grade, full-stack application built to generate engaging LinkedIn posts and messages, perform real-time post quality analysis, track analytics, and export content—powered by **FastAPI**, **PostgreSQL/SQLAlchemy**, **Pluggable LLM Engine (Groq / OpenAI)**, and modern security practices.
+A production-grade, full-stack application built to generate engaging LinkedIn posts and messages, perform real-time AI quality analysis, track analytics, and export content—powered by **FastAPI**, **PostgreSQL/SQLAlchemy**, **Pluggable LLM Engine (Groq / OpenAI / Anthropic)**, and modern security practices.
 
 ---
 
@@ -10,7 +10,7 @@ A production-grade, full-stack application built to generate engaging LinkedIn p
 +---------------------------------------------------------------------------------------+
 |                                  CLIENT BROWSER                                       |
 |  - HTML5 / CSS3 / ES6 JavaScript & Chart.js                                           |
-|  - Generator UI, Quality Metrics Engine, Analytics Visualizations                    |
+|  - Auth UI Modal (Login / Register / Profile Badge)                                   |
 |  - httpOnly Cookie Token Auth Handling (XSS Vulnerability Safeguard)                  |
 +------------------------------------------+--------------------------------------------+
                                            |
@@ -18,17 +18,19 @@ A production-grade, full-stack application built to generate engaging LinkedIn p
                                            v
 +---------------------------------------------------------------------------------------+
 |                               FASTAPI BACKEND (Python 3.11+)                           |
+|  - Procfile / Gunicorn: gunicorn backend.app.main:app -k uvicorn.workers.UvicornWorker|
 |  - Routers: /api/v1/auth, /api/v1/posts, /api/v1/analyzer, /api/v1/export             |
-|  - Security: httpOnly JWT Cookies, CORS Restriction, Slowapi Rate Limiting             |
-|  - Services: LLM Engine (Groq / OpenAI / Mock), Quality Scoring, ReportLab PDF         |
-|  - Background Tasks: Native FastAPI BackgroundTasks for exports                       |
+|  - Security: IDOR Ownership Checks, httpOnly JWT Cookies, Slowapi Rate Limiting       |
+|  - Services: Multi-Provider LLM Engine, Dynamic Quality Scoring, ReportLab PDF         |
 +-------------------+------------------------------------+------------------------------+
                     |                                    |
                     v                                    v
    +---------------------------------+  +----------------------------------+
    |  PostgreSQL / SQLite Database   |  |      Pluggable LLM Providers     |
-   | - SQLAlchemy ORM Models         |  | - Groq Llama 3.3 70B / 3.1 8B    |
-   | - Idempotent JSON Data Migration|  | - Token Budget Enforcer          |
+   | - SQLAlchemy ORM Models         |  | - Groq (Llama 3.3 70B / 3.1 8B) |
+   | - User-Scoped Data Protection   |  | - OpenAI (GPT-3.5-Turbo / GPT-4o)|
+   | - Idempotent Data Migration     |  | - Anthropic (Claude 3.5 Sonnet)  |
+   |                                 |  | - Token Budget Enforcer          |
    +---------------------------------+  +----------------------------------+
 ```
 
@@ -36,15 +38,15 @@ A production-grade, full-stack application built to generate engaging LinkedIn p
 
 ## ✨ Features & Highlights
 
-- 🤖 **LLM Post Generator**: Real-time generation powered by LLMs (Groq Llama 3.3 70B & 3.1 8B) with customizable tone, length, and auto-hashtags. Includes token cost control enforcement.
-- 💬 **Professional Message Generator**: Write tailored networking, collaboration, and follow-up messages.
-- 🔍 **Post Quality Analyzer**: Comprehensive scoring (0-100), word count assessment, hashtag optimization, line break checks, and AI improvement suggestions.
-- 🗄️ **Relational Database Storage**: Migrated from legacy `post_history.json` to SQLAlchemy ORM (PostgreSQL/SQLite) with idempotent data migration.
-- 🔒 **Security & Authentication**: User registration and login powered by bcrypt password hashing and **`httpOnly` JWT cookies** (protecting against XSS token theft).
+- 🤖 **Multi-Provider LLM Engine**: Native support for **Groq**, **OpenAI**, and **Anthropic** with automatic fallback to mock engine for offline development. Enforces `max_tokens` (1000 limit) and input length validation to control billing.
+- 🔐 **JWT Auth & Ownership Protection**: User registration and login powered by bcrypt password hashing and **`httpOnly` JWT cookies**. Enforces user ownership checks to eliminate IDOR and global wiping vulnerabilities.
+- 🔍 **AI-Assisted Quality Analyzer**: Analyzes length, line spacing, questions, emojis, and hashtags, providing dynamic AI-rewritten post versions.
+- 🗄️ **Relational Database Storage**: Migrated from legacy `post_history.json` to SQLAlchemy ORM (PostgreSQL/SQLite) with idempotent deduplicated data migration.
+- 💻 **Frontend Auth Integration**: Interactive Login/Register modal, automatic user session detection, and dynamic API base URL routing.
 - 📊 **Analytics Dashboard**: Interactive Chart.js visualizers for post counts, popular topics, and timeline trends.
 - 📄 **Export Utilities**: High-quality PDF export (ReportLab) and direct LinkedIn sharing links.
 - 🐳 **Docker Parity**: Multi-stage `Dockerfile` and `docker-compose.yml` for unified local dev and production deployment.
-- 🧪 **Automated Testing & CI**: Pytest suite covering endpoints, auth, and logic, integrated into GitHub Actions CI (`.github/workflows/ci.yml`).
+- 🧪 **Automated Testing & CI**: Pytest suite covering endpoints, auth, IDOR checks, and logic, integrated into GitHub Actions CI (`.github/workflows/ci.yml`).
 - 📖 **OpenAPI Documentation**: Automatic Swagger UI documentation available at `/docs`.
 
 ---
@@ -63,7 +65,7 @@ A production-grade, full-stack application built to generate engaging LinkedIn p
    ```bash
    cp .env.example .env
    ```
-   *Edit `.env` to supply your `GROQ_API_KEY` (or use `LLM_PROVIDER=mock` for offline testing).*
+   *Edit `.env` to supply your `GROQ_API_KEY`, `OPENAI_API_KEY`, or `ANTHROPIC_API_KEY` (or set `LLM_PROVIDER=mock` for offline testing).*
 
 3. **Install Dependencies**:
    ```bash
@@ -116,10 +118,12 @@ python -m pytest -v
 | POST | `/api/v1/auth/register` | Register new user account |
 | POST | `/api/v1/auth/login` | Login user & set httpOnly access token cookie |
 | POST | `/api/v1/auth/logout` | Logout user & clear cookie |
+| GET | `/api/v1/auth/me` | Retrieve authenticated user profile |
 | POST | `/api/v1/generate-post` | Generate LinkedIn post with LLM |
 | POST | `/api/v1/generate-message` | Generate professional message |
-| POST | `/api/v1/analyze-text` | Analyze post quality & score |
+| POST | `/api/v1/analyze-text` | Analyze post quality & score with AI rewrite |
 | GET | `/api/v1/get-history` | Retrieve user post history |
+| DELETE | `/api/v1/delete-history` | Delete history for authenticated user |
 | POST | `/api/v1/export-pdf` | Download post as PDF document |
 
 Full interactive API documentation is available at `/docs`.

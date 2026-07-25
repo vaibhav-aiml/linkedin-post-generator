@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Dict, List, Tuple
+from typing import List
 from backend.app.core.config import settings
 
 
@@ -46,7 +46,7 @@ Requirements:
 - Write in first person as a professional sharing real insights
 - Include a thoughtful question at the end to encourage comments
 - Use short paragraphs and line breaks for easy reading
-- Sound authentic and personal, not like generic AI
+- Sound authentic and personal
 - Start with a strong hook that grabs attention
 """
         max_tokens = min(settings.MAX_LLM_TOKENS_PER_POST, 1200)
@@ -90,20 +90,70 @@ class OpenAIProvider(BaseLLMProvider):
         self.client = OpenAI(api_key=api_key)
 
     def generate_post(self, topic: str, post_type: str, length: str, tone: str) -> str:
-        prompt = f"Write an engaging LinkedIn post about {topic}. Post Type: {post_type}, Length: {length}."
+        prompt = f"Write an engaging LinkedIn post about '{topic}'. Post Type: {post_type}, Length: {length}, Tone: {tone}."
         response = self.client.chat.completions.create(
-            messages=[{"role": "user", "content": prompt}],
+            messages=[
+                {"role": "system", "content": "You are an expert LinkedIn content strategist."},
+                {"role": "user", "content": prompt}
+            ],
             model="gpt-3.5-turbo",
             max_tokens=settings.MAX_LLM_TOKENS_PER_POST
         )
         return response.choices[0].message.content
 
     def generate_hashtags(self, topic: str) -> List[str]:
-        topic_clean = topic.replace(" ", "")
-        return [f"#{topic_clean}", "#ProfessionalGrowth", "#Career", "#Innovation", "#LinkedIn"]
+        prompt = f"Generate 5 trending hashtags for LinkedIn about {topic}. Return only the hashtags separated by spaces."
+        response = self.client.chat.completions.create(
+            messages=[{"role": "user", "content": prompt}],
+            model="gpt-3.5-turbo",
+            max_tokens=100
+        )
+        tags = response.choices[0].message.content.strip().split()
+        return [t for t in tags if t.startswith('#')][:5]
 
     def generate_message(self, recipient: str, context: str, purpose: str) -> str:
-        return f"Hello {recipient},\n\nI was impressed by your work in {context}. Would love to connect!\n\nBest,\n[Your Name]"
+        prompt = f"Write a concise, professional LinkedIn connection message to {recipient} about {context} ({purpose}). Keep under 150 words."
+        response = self.client.chat.completions.create(
+            messages=[{"role": "user", "content": prompt}],
+            model="gpt-3.5-turbo",
+            max_tokens=300
+        )
+        return response.choices[0].message.content
+
+
+class AnthropicProvider(BaseLLMProvider):
+    def __init__(self, api_key: str):
+        import anthropic
+        self.client = anthropic.Anthropic(api_key=api_key)
+
+    def generate_post(self, topic: str, post_type: str, length: str, tone: str) -> str:
+        prompt = f"Write an engaging LinkedIn post about '{topic}'. Style: {post_type}, Length: {length}, Tone: {tone}."
+        response = self.client.messages.create(
+            model="claude-3-haiku-20240307",
+            max_tokens=settings.MAX_LLM_TOKENS_PER_POST,
+            system="You are a professional LinkedIn content writer.",
+            messages=[{"role": "user", "content": prompt}]
+        )
+        return response.content[0].text
+
+    def generate_hashtags(self, topic: str) -> List[str]:
+        prompt = f"Generate 5 relevant hashtags for a LinkedIn post about {topic}. Return only hashtags separated by spaces."
+        response = self.client.messages.create(
+            model="claude-3-haiku-20240307",
+            max_tokens=100,
+            messages=[{"role": "user", "content": prompt}]
+        )
+        tags = response.content[0].text.strip().split()
+        return [t for t in tags if t.startswith('#')][:5]
+
+    def generate_message(self, recipient: str, context: str, purpose: str) -> str:
+        prompt = f"Write a polite, engaging LinkedIn message to {recipient} about {context} for {purpose}."
+        response = self.client.messages.create(
+            model="claude-3-haiku-20240307",
+            max_tokens=300,
+            messages=[{"role": "user", "content": prompt}]
+        )
+        return response.content[0].text
 
 
 class MockLLMProvider(BaseLLMProvider):
@@ -143,6 +193,12 @@ class LLMFactory:
         if provider_type == "openai" and settings.OPENAI_API_KEY:
             try:
                 return OpenAIProvider(api_key=settings.OPENAI_API_KEY)
+            except Exception:
+                pass
+
+        if provider_type == "anthropic" and settings.ANTHROPIC_API_KEY:
+            try:
+                return AnthropicProvider(api_key=settings.ANTHROPIC_API_KEY)
             except Exception:
                 pass
 

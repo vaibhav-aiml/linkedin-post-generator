@@ -1,7 +1,12 @@
-const API_BASE_URL = window.location.port === '5000' ? 'http://localhost:5000/api' : 'http://localhost:8000/api';
+const API_BASE_URL = window.location.origin.includes('5000')
+    ? 'http://localhost:5000/api'
+    : (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+        ? 'http://localhost:8000/api/v1'
+        : `${window.location.origin}/api/v1`;
 
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Frontend loaded');
+    console.log('Frontend loaded, connecting to API:', API_BASE_URL);
+    checkAuthStatus();
     loadHistory();
     loadFavorites();
     
@@ -16,6 +21,115 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('charProgress').style.width = percent + '%';
     });
 });
+
+async function checkAuthStatus() {
+    try {
+        let response = await fetch(`${API_BASE_URL}/auth/me`, {
+            method: 'GET',
+            credentials: 'include'
+        });
+        if (response.ok) {
+            let user = await response.json();
+            document.getElementById('userBadge').style.display = 'inline-block';
+            document.getElementById('userEmailText').innerText = user.email;
+            document.getElementById('authBtn').style.display = 'none';
+            document.getElementById('logoutBtn').style.display = 'inline-block';
+        } else {
+            document.getElementById('userBadge').style.display = 'none';
+            document.getElementById('authBtn').style.display = 'inline-block';
+            document.getElementById('logoutBtn').style.display = 'none';
+        }
+    } catch (e) {
+        console.log('Auth check error (running in guest mode):', e);
+    }
+}
+
+function openAuthModal() {
+    document.getElementById('authModal').style.display = 'flex';
+}
+
+function closeAuthModal() {
+    document.getElementById('authModal').style.display = 'none';
+}
+
+function switchAuthTab(tab) {
+    if (tab === 'login') {
+        document.getElementById('tabLoginBtn').classList.add('active');
+        document.getElementById('tabRegisterBtn').classList.remove('active');
+        document.getElementById('loginForm').style.display = 'block';
+        document.getElementById('registerForm').style.display = 'none';
+    } else {
+        document.getElementById('tabRegisterBtn').classList.add('active');
+        document.getElementById('tabLoginBtn').classList.remove('active');
+        document.getElementById('registerForm').style.display = 'block';
+        document.getElementById('loginForm').style.display = 'none';
+    }
+}
+
+async function handleLogin(e) {
+    e.preventDefault();
+    let email = document.getElementById('loginEmail').value;
+    let password = document.getElementById('loginPassword').value;
+
+    try {
+        let response = await fetch(`${API_BASE_URL}/auth/login`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            credentials: 'include',
+            body: JSON.stringify({email, password})
+        });
+        let data = await response.json();
+        if (response.ok) {
+            alert('Login successful!');
+            closeAuthModal();
+            await checkAuthStatus();
+            await loadHistory();
+        } else {
+            alert(data.detail || 'Login failed');
+        }
+    } catch (err) {
+        alert('Login error: ' + err.message);
+    }
+}
+
+async function handleRegister(e) {
+    e.preventDefault();
+    let email = document.getElementById('registerEmail').value;
+    let password = document.getElementById('registerPassword').value;
+
+    try {
+        let response = await fetch(`${API_BASE_URL}/auth/register`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            credentials: 'include',
+            body: JSON.stringify({email, password})
+        });
+        let data = await response.json();
+        if (response.ok) {
+            alert('Registration successful! Please login.');
+            switchAuthTab('login');
+            document.getElementById('loginEmail').value = email;
+        } else {
+            alert(data.detail || 'Registration failed');
+        }
+    } catch (err) {
+        alert('Registration error: ' + err.message);
+    }
+}
+
+async function logoutUser() {
+    try {
+        await fetch(`${API_BASE_URL}/auth/logout`, {
+            method: 'POST',
+            credentials: 'include'
+        });
+        alert('Logged out');
+        await checkAuthStatus();
+        await loadHistory();
+    } catch (e) {
+        console.error(e);
+    }
+}
 
 async function generatePost(e) {
     e.preventDefault();
@@ -33,6 +147,7 @@ async function generatePost(e) {
         let response = await fetch(`${API_BASE_URL}/generate-post`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
+            credentials: 'include',
             body: JSON.stringify({topic: topic, type: type})
         });
         
@@ -76,6 +191,7 @@ async function generateMessage(e) {
         let response = await fetch(`${API_BASE_URL}/generate-message`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
+            credentials: 'include',
             body: JSON.stringify({recipient_name: recipient, context: context, purpose: purpose})
         });
         
@@ -431,12 +547,14 @@ function escapeHtml(text) {
 
 async function loadHistory() {
     try {
-        let response = await fetch(`${API_BASE_URL}/get-history`);
+        let response = await fetch(`${API_BASE_URL}/get-history`, {
+            credentials: 'include'
+        });
         let data = await response.json();
         
         let historyDiv = document.getElementById('historyList');
         
-        if (data.history && data.history.length > 0) {
+        if (historyDiv && data.history && data.history.length > 0) {
             historyDiv.innerHTML = data.history.map(post => `
                 <div class="history-item" onclick="viewPost(${post.id})" style="padding:12px; border-bottom:1px solid #e0e0e0; cursor:pointer;">
                     <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
@@ -447,7 +565,7 @@ async function loadHistory() {
                 </div>
             `).join('');
             
-            document.getElementById('totalPosts').innerText = data.history.length;
+            if (document.getElementById('totalPosts')) document.getElementById('totalPosts').innerText = data.history.length;
             
             let topics = {};
             let types = {};
@@ -457,23 +575,23 @@ async function loadHistory() {
             });
             
             let mostTopic = Object.keys(topics).reduce((a,b) => topics[a] > topics[b] ? a : b, 'None');
-            document.getElementById('mostUsedTopic').innerText = mostTopic;
+            if (document.getElementById('mostUsedTopic')) document.getElementById('mostUsedTopic').innerText = mostTopic;
             
             let typeNames = {'professional':'Professional','networking':'Networking','tech':'Technology','marketing':'Marketing','leadership':'Leadership','career':'Career'};
             let mostType = Object.keys(types).reduce((a,b) => types[a] > types[b] ? a : b, 'professional');
-            document.getElementById('popularType').innerText = typeNames[mostType] || mostType;
+            if (document.getElementById('popularType')) document.getElementById('popularType').innerText = typeNames[mostType] || mostType;
             
             let totalLen = data.history.reduce((sum, p) => sum + p.content.length, 0);
             let avgLen = Math.round(totalLen / data.history.length);
-            document.getElementById('avgLength').innerText = avgLen;
+            if (document.getElementById('avgLength')) document.getElementById('avgLength').innerText = avgLen;
             
             createCharts(types, data.history);
-        } else {
+        } else if (historyDiv) {
             historyDiv.innerHTML = '<p class="text-muted" style="text-align:center; padding:20px;">No posts yet. Generate your first post!</p>';
-            document.getElementById('totalPosts').innerText = '0';
-            document.getElementById('mostUsedTopic').innerText = '-';
-            document.getElementById('popularType').innerText = '-';
-            document.getElementById('avgLength').innerText = '0';
+            if (document.getElementById('totalPosts')) document.getElementById('totalPosts').innerText = '0';
+            if (document.getElementById('mostUsedTopic')) document.getElementById('mostUsedTopic').innerText = '-';
+            if (document.getElementById('popularType')) document.getElementById('popularType').innerText = '-';
+            if (document.getElementById('avgLength')) document.getElementById('avgLength').innerText = '0';
             showEmptyCharts();
         }
     } catch (error) {
@@ -481,13 +599,6 @@ async function loadHistory() {
     }
 }
 
-function createCharts(types, history) {
-    if (typeof Chart === 'undefined') {
-        let script = document.createElement('script');
-        script.src = 'https://cdn.jsdelivr.net/npm/chart.js';
-        script.onload = () => renderCharts(types, history);
-        document.head.appendChild(script);
-    } else {
         renderCharts(types, history);
     }
 }
