@@ -220,6 +220,7 @@ async function analyzeText() {
         let response = await fetch(`${API_BASE_URL}/analyze-text`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
+            credentials: 'include',
             body: JSON.stringify({text: text})
         });
         
@@ -641,23 +642,40 @@ function showEmptyCharts() {
 
 async function viewPost(id) {
     try {
-        let response = await fetch(`${API_BASE_URL}/get-post/${id}`);
+        let response = await fetch(`${API_BASE_URL}/get-post/${id}`, {
+            credentials: 'include'
+        });
         let data = await response.json();
-        if (data.success) {
+        if (response.ok && data.success) {
             document.getElementById('postContent').innerHTML = data.post.content.replace(/\n/g, '<br>');
             document.getElementById('postResult').style.display = 'block';
+            let hashtags = document.getElementById('postHashtags');
+            if (hashtags) hashtags.innerHTML = '';
             document.getElementById('postResult').scrollIntoView({behavior: 'smooth'});
+        } else {
+            alert(data.detail || 'Could not load post (Access denied or not logged in)');
         }
     } catch (error) {
-        alert('Error loading post');
+        alert('Error loading post details');
     }
 }
 
 async function clearHistory() {
-    if (confirm('Clear all history?')) {
-        await fetch(`${API_BASE_URL}/delete-history`, {method: 'DELETE'});
-        await loadHistory();
-        alert('History cleared');
+    if (!confirm('Are you sure you want to clear your post history?')) return;
+    try {
+        let response = await fetch(`${API_BASE_URL}/delete-history`, {
+            method: 'DELETE',
+            credentials: 'include'
+        });
+        let data = await response.json();
+        if (response.ok) {
+            alert('History cleared');
+            await loadHistory();
+        } else {
+            alert(data.detail || 'Could not clear history (Login required)');
+        }
+    } catch (e) {
+        alert('Error clearing history');
     }
 }
 
