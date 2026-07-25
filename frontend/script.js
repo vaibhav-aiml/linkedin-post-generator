@@ -333,12 +333,12 @@ async function loadHistory() {
         
         if (historyDiv && data.history && data.history.length > 0) {
             historyDiv.innerHTML = data.history.map(post => `
-                <div class="history-item" onclick="viewPost(${post.id})" style="padding:12px; border-bottom:1px solid #e0e0e0; cursor:pointer;">
-                    <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
-                        <strong style="color:#8E2DE2;">${escapeHtml(post.topic)}</strong>
-                        <small style="color:#999;">${post.date}</small>
+                <div class="history-item" onclick="viewPost(${post.id})">
+                    <div class="history-item-header">
+                        <strong class="item-topic">${escapeHtml(post.topic)}</strong>
+                        <small class="item-date">${post.date}</small>
                     </div>
-                    <div style="font-size:12px; color:#666;">${escapeHtml(post.content.substring(0, 100))}...</div>
+                    <div class="item-preview">${escapeHtml(post.content.substring(0, 100))}...</div>
                 </div>
             `).join('');
             
@@ -381,9 +381,14 @@ function createCharts(types, history) {
 }
 
 function renderCharts(types, history) {
+    const isDark = document.body.classList.contains('dark-mode');
     const colors = ['#2B5278', '#C49A45', '#3A6B9B', '#D97706', '#059669', '#6366F1', '#8B5CF6'];
     const typeNames = {'professional':'Professional','networking':'Networking','tech':'Technology','marketing':'Marketing','leadership':'Leadership','career':'Career'};
     
+    const textColor = isDark ? '#A0A8B5' : '#4A525D';
+    const legendColor = isDark ? '#EAECEF' : '#1A1E24';
+    const gridColor = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)';
+
     let labels = Object.keys(types).map(t => typeNames[t] || t);
     let data = Object.values(types);
     
@@ -412,7 +417,10 @@ function renderCharts(types, history) {
                 plugins: { 
                     legend: { 
                         position: 'bottom',
-                        labels: { font: { family: 'Plus Jakarta Sans', size: 11 } }
+                        labels: { 
+                            color: legendColor,
+                            font: { family: 'Plus Jakarta Sans', size: 11 } 
+                        } 
                     } 
                 } 
             }
@@ -434,8 +442,8 @@ function renderCharts(types, history) {
                 datasets: [{
                     label: 'Drafts Created',
                     data: timelineData,
-                    borderColor: '#2B5278',
-                    backgroundColor: 'rgba(43, 82, 120, 0.1)',
+                    borderColor: isDark ? '#D4AF37' : '#2B5278',
+                    backgroundColor: isDark ? 'rgba(212, 175, 55, 0.12)' : 'rgba(43, 82, 120, 0.1)',
                     fill: true,
                     tension: 0.4
                 }]
@@ -445,8 +453,15 @@ function renderCharts(types, history) {
                 maintainAspectRatio: false,
                 plugins: { legend: { display: false } },
                 scales: {
-                    x: { grid: { display: false } },
-                    y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' } }
+                    x: { 
+                        ticks: { color: textColor, font: { family: 'Plus Jakarta Sans', size: 11 } },
+                        grid: { display: false } 
+                    },
+                    y: { 
+                        beginAtZero: true, 
+                        ticks: { color: textColor, font: { family: 'Plus Jakarta Sans', size: 11 } },
+                        grid: { color: gridColor } 
+                    }
                 }
             }
         });
@@ -533,9 +548,12 @@ function loadFavorites() {
     }
     
     container.innerHTML = favs.map((fav, i) => `
-        <div class="favorite-item" onclick="loadFavorite(${i})" style="padding:12px; border-bottom:1px solid #e0e0e0; cursor:pointer; display:flex; justify-content:space-between;">
-            <div><strong style="color:#8E2DE2;">${escapeHtml(fav.topic)}</strong> <small>${fav.type}</small></div>
-            <small style="color:#999;">${fav.date}</small>
+        <div class="favorite-item" onclick="loadFavorite(${i})">
+            <div>
+                <strong class="item-topic">${escapeHtml(fav.topic)}</strong> 
+                <span class="item-type-badge">${escapeHtml(fav.type)}</span>
+            </div>
+            <small class="item-date">${fav.date}</small>
         </div>
     `).join('');
 }
@@ -599,6 +617,10 @@ function toggleDarkMode() {
         btn.innerHTML = '<i class="fas fa-moon"></i>';
         localStorage.setItem('darkMode', 'false');
     }
+
+    // Refresh history and charts with dynamic theme colors
+    loadHistory();
+    loadFavorites();
 }
 
 if (localStorage.getItem('darkMode') === 'true') {
