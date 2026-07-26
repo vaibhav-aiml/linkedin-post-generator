@@ -1,3 +1,2 @@
-# Redirect frontend API calls to Render Backend in production
-# Replace the placeholder URL with your deployed Render service URL if using proxy redirects
-# /api/*  https://linkedin-post-generator.onrender.com/api/:splat  200
+# Redirect frontend API calls to live Render Backend
+/api/*  https://linkedin-post-generator-pd4j.onrender.com/api/:splat  200!
