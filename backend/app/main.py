@@ -47,7 +47,7 @@ app.include_router(analyzer.router, prefix="/api")
 app.include_router(export.router, prefix="/api")
 
 
-@app.get("/", tags=["Root"])
+@app.api_route("/", methods=["GET", "HEAD"], tags=["Root"])
 def root():
     return {
         "message": "Welcome to LinkedIn Content Studio API v2.0",
@@ -56,8 +56,8 @@ def root():
     }
 
 
-@app.get("/health", tags=["Health Diagnostics"])
-@app.get("/api/health", tags=["Health Diagnostics"])
+@app.api_route("/health", methods=["GET", "HEAD"], tags=["Health Diagnostics"])
+@app.api_route("/api/health", methods=["GET", "HEAD"], tags=["Health Diagnostics"])
 def health_check():
     return {
         "status": "healthy",
