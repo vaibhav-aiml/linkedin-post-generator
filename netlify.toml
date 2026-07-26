@@ -1,0 +1,11 @@
+[build]
+  publish = "frontend"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# Optional SPA / API redirection
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

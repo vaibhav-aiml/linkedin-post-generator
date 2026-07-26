@@ -1,8 +1,12 @@
-const API_BASE_URL = window.location.origin.includes('5000')
-    ? 'http://localhost:5000/api'
-    : (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-        ? 'http://localhost:8000/api/v1'
-        : `${window.location.origin}/api/v1`;
+const getApiBaseUrl = () => {
+    if (window.API_BASE_URL) return window.API_BASE_URL;
+    if (localStorage.getItem('API_BASE_URL')) return localStorage.getItem('API_BASE_URL');
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        return window.location.origin.includes('5000') ? 'http://localhost:5000/api' : 'http://localhost:8000/api/v1';
+    }
+    return '/api/v1';
+};
+const API_BASE_URL = getApiBaseUrl();
 
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Frontend loaded, connecting to API:', API_BASE_URL);
