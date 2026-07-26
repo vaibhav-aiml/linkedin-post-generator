@@ -2,7 +2,7 @@ services:
   - type: web
     name: linkedin-post-generator-backend
     env: python
-    buildCommand: pip install -r requirements.txt
+    buildCommand: pip install -r backend/requirements.txt
     startCommand: uvicorn app:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /api/health
     envVars:
@@ -11,7 +11,7 @@ services:
       - key: DEBUG
         value: false
       - key: CORS_ORIGINS
-        value: "*"
+        value: "https://tubular-bonbon-644eda.netlify.app"
       - key: SECRET_KEY
         generateValue: true
       - key: JWT_SECRET_KEY

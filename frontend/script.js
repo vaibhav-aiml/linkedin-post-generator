@@ -1,3 +1,16 @@
+// ---------------------------------------------------------------------------
+// API Base URL Configuration
+// ---------------------------------------------------------------------------
+// In production (Netlify), this resolves to "/api/v1" — a relative path on
+// the same origin. Netlify's _redirects file silently proxies /api/* requests
+// to the Render backend (https://linkedin-post-generator-pd4j.onrender.com).
+// This keeps all API calls same-origin, avoiding CORS issues entirely.
+//
+// For local development, it auto-detects localhost and uses the appropriate
+// port. You can also override via window.API_BASE_URL or localStorage.
+//
+// If you ever change the Render URL, update frontend/_redirects — NOT this file.
+// ---------------------------------------------------------------------------
 const getApiBaseUrl = () => {
     if (window.API_BASE_URL) return window.API_BASE_URL;
     if (localStorage.getItem('API_BASE_URL')) return localStorage.getItem('API_BASE_URL');

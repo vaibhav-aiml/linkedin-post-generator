@@ -26,8 +26,10 @@ class Settings(BaseSettings):
     ANTHROPIC_API_KEY: str = ""
     MAX_LLM_TOKENS_PER_POST: int = 1000
 
-    # CORS
-    CORS_ORIGINS: Union[str, List[str]] = "http://localhost:3000,http://localhost:5173,http://127.0.0.1:5500,http://localhost:8000"
+    # CORS — In production, the Netlify proxy makes frontend requests same-origin,
+    # so CORS is not triggered. This list is a safety net for direct API access
+    # (e.g. Swagger UI, Postman, or if the proxy ever fails).
+    CORS_ORIGINS: Union[str, List[str]] = "http://localhost:3000,http://localhost:5173,http://127.0.0.1:5500,http://localhost:8000,https://tubular-bonbon-644eda.netlify.app"
 
     model_config = SettingsConfigDict(
         env_file=(".env", "backend/.env"),

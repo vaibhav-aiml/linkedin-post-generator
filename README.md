@@ -2,6 +2,11 @@
 
 A production-grade, full-stack application built to generate engaging LinkedIn posts and messages, perform real-time AI quality analysis, track analytics, and export content—powered by **FastAPI**, **PostgreSQL/SQLAlchemy**, **Pluggable LLM Engine (Groq / OpenAI / Anthropic)**, and modern security practices.
 
+## 🌐 Live Demo
+
+- **Frontend**: [https://tubular-bonbon-644eda.netlify.app](https://tubular-bonbon-644eda.netlify.app)
+- **Backend API**: [https://linkedin-post-generator-pd4j.onrender.com](https://linkedin-post-generator-pd4j.onrender.com) (Swagger docs at [`/docs`](https://linkedin-post-generator-pd4j.onrender.com/docs))
+
 ---
 
 ## 🎯 Architectural Overview
@@ -69,7 +74,7 @@ A production-grade, full-stack application built to generate engaging LinkedIn p
 
 3. **Install Dependencies**:
    ```bash
-   pip install -r requirements.txt
+    pip install -r backend/requirements.txt
    ```
 
 4. **Run Idempotent Data Migration**:
