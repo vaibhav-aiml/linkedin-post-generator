@@ -32,7 +32,7 @@ A production-grade, full-stack application built to generate engaging LinkedIn p
                     v                                    v
    +---------------------------------+  +----------------------------------+
    |  PostgreSQL / SQLite Database   |  |      Pluggable LLM Providers     |
-   | - SQLAlchemy ORM Models         |  | - Groq (Llama 3.3 70B / 3.1 8B) |
+   | - SQLAlchemy ORM Models         |  | - Groq (Llama 3.3 70B / GPT OSS) |
    | - User-Scoped Data Protection   |  | - OpenAI (GPT-3.5-Turbo / GPT-4o)|
    | - Idempotent Data Migration     |  | - Anthropic (Claude 3.5 Sonnet)  |
    |                                 |  | - Token Budget Enforcer          |

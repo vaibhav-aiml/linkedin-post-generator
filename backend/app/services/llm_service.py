@@ -66,7 +66,7 @@ Requirements:
         hashtag_prompt = f"Generate 5 relevant hashtags for a LinkedIn post about {topic}. Return only the hashtags separated by spaces, like this: #Topic #Example #Tags"
         hashtag_response = self.client.chat.completions.create(
             messages=[{"role": "user", "content": hashtag_prompt}],
-            model="llama-3.1-8b-instant",
+            model="openai/gpt-oss-20b",
             temperature=0.5,
             max_tokens=100
         )
@@ -77,7 +77,7 @@ Requirements:
         prompt = f"Write a professional LinkedIn message to {recipient} regarding {context} for {purpose} purposes. Keep it polite, personalized, under 150 words."
         response = self.client.chat.completions.create(
             messages=[{"role": "user", "content": prompt}],
-            model="llama-3.1-8b-instant",
+            model="openai/gpt-oss-20b",
             temperature=0.7,
             max_tokens=300
         )
