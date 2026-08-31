@@ -71,7 +71,7 @@ Requirements:
                 {"role": "system", "content": "You are an expert LinkedIn content creator who writes engaging, high-performing posts."},
                 {"role": "user", "content": prompt}
             ],
-            model="llama-3.3-70b-versatile",
+            model="openai/gpt-oss-120b",
             temperature=0.7,
             max_tokens=max_tokens
         )
@@ -135,11 +135,12 @@ Important Requirements:
                 {"role": "system", "content": "You are a professional LinkedIn copy editor. You rewrite and optimize user drafts for maximum engagement while preserving the original message."},
                 {"role": "user", "content": prompt}
             ],
-            model="llama-3.3-70b-versatile",
+            model="openai/gpt-oss-120b",
             temperature=0.7,
             max_tokens=settings.MAX_LLM_TOKENS_PER_POST
         )
         return response.choices[0].message.content
+
 
 
 class OpenAIProvider(BaseLLMProvider):
