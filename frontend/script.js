@@ -183,9 +183,15 @@ async function generatePost(e) {
         let data = await response.json();
         
         if (response.ok && data.success) {
-            document.getElementById('postContent').innerHTML = data.post.content.replace(/\n/g, '<br>');
+            let postContentEl = document.getElementById('postContent');
             let postResultEl = document.getElementById('postResult');
-            postResultEl.style.display = 'block';
+            let messageResultEl = document.getElementById('messageResult');
+            
+            if (messageResultEl) messageResultEl.style.display = 'none';
+            if (postContentEl) postContentEl.innerHTML = data.post.content.replace(/\n/g, '<br>');
+            if (postResultEl) {
+                postResultEl.style.display = 'block';
+            }
             
             let hashtags = document.getElementById('postHashtags');
             if (hashtags) {
@@ -201,19 +207,21 @@ async function generatePost(e) {
             }
             
             await loadHistory();
-            setTimeout(() => {
+            
+            if (postResultEl) {
                 postResultEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }, 100);
+            }
         } else {
             alert(data.detail || 'Failed to generate post.');
         }
     } catch (error) {
-        console.error(error);
+        console.error('Post generation error:', error);
         alert('Error: Make sure backend is running');
+    } finally {
+        document.getElementById('loadingOverlay').style.display = 'none';
     }
-    
-    document.getElementById('loadingOverlay').style.display = 'none';
 }
+
 
 
 async function generateMessage(e) {
@@ -240,21 +248,26 @@ async function generateMessage(e) {
         let data = await response.json();
         
         if (response.ok && data.success) {
-            document.getElementById('messageContent').innerHTML = data.message.replace(/\n/g, '<br>');
+            let messageContentEl = document.getElementById('messageContent');
             let messageResultEl = document.getElementById('messageResult');
-            messageResultEl.style.display = 'block';
-            setTimeout(() => {
+            let postResultEl = document.getElementById('postResult');
+            
+            if (postResultEl) postResultEl.style.display = 'none';
+            if (messageContentEl) messageContentEl.innerHTML = data.message.replace(/\n/g, '<br>');
+            if (messageResultEl) {
+                messageResultEl.style.display = 'block';
                 messageResultEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }, 100);
+            }
         } else {
             alert(data.detail || 'Failed to generate message.');
         }
     } catch (error) {
         alert('Error generating message: Make sure backend is running');
+    } finally {
+        document.getElementById('loadingOverlay').style.display = 'none';
     }
-    
-    document.getElementById('loadingOverlay').style.display = 'none';
 }
+
 
 function copyToClipboard(elementId) {
     let el = document.getElementById(elementId);
@@ -565,11 +578,31 @@ async function viewPost(id) {
         });
         let data = await response.json();
         if (response.ok && data.success) {
-            document.getElementById('postContent').innerHTML = data.post.content.replace(/\n/g, '<br>');
-            document.getElementById('postResult').style.display = 'block';
+            let postContentEl = document.getElementById('postContent');
+            let postResultEl = document.getElementById('postResult');
+            let messageResultEl = document.getElementById('messageResult');
+
+            if (messageResultEl) messageResultEl.style.display = 'none';
+            if (postContentEl) postContentEl.innerHTML = data.post.content.replace(/\n/g, '<br>');
+            if (postResultEl) {
+                postResultEl.style.display = 'block';
+            }
+
             let hashtags = document.getElementById('postHashtags');
-            if (hashtags) hashtags.innerHTML = '';
-            document.getElementById('postResult').scrollIntoView({behavior: 'smooth'});
+            if (hashtags) {
+                hashtags.innerHTML = '';
+                if (data.post.suggested_hashtags && Array.isArray(data.post.suggested_hashtags)) {
+                    data.post.suggested_hashtags.forEach(tag => {
+                        let span = document.createElement('span');
+                        span.className = 'hashtag-chip';
+                        span.textContent = tag;
+                        hashtags.appendChild(span);
+                    });
+                }
+            }
+            if (postResultEl) {
+                postResultEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
         } else {
             alert(data.detail || 'Could not load post (Access denied or not logged in)');
         }
@@ -577,6 +610,7 @@ async function viewPost(id) {
         alert('Error loading post details');
     }
 }
+
 
 async function clearHistory() {
     if (!confirm('Are you sure you want to clear your post history?')) return;
@@ -783,6 +817,7 @@ window.analyzeText = analyzeText;
 window.clearHistory = clearHistory;
 window.viewPost = viewPost;
 window.saveFavorite = saveFavorite;
+window.saveCurrentTemplate = saveFavorite;
 window.loadFavorite = loadFavorite;
 window.shareToLinkedIn = shareToLinkedIn;
 window.exportAsPDF = exportAsPDF;
@@ -791,4 +826,13 @@ window.handleDocumentUpload = handleDocumentUpload;
 window.clearDocumentContext = clearDocumentContext;
 window.copyCorrectedVersion = copyCorrectedVersion;
 window.copyToClipboard = copyToClipboard;
+window.generatePost = generatePost;
+window.generateMessage = generateMessage;
+window.logoutUser = logoutUser;
+window.openAuthModal = openAuthModal;
+window.closeAuthModal = closeAuthModal;
+window.switchAuthTab = switchAuthTab;
+window.handleLogin = handleLogin;
+window.handleRegister = handleRegister;
+
 
