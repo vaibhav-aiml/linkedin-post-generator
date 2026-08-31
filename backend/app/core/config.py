@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     # CORS — In production, the Netlify proxy makes frontend requests same-origin,
     # so CORS is not triggered. This list is a safety net for direct API access
     # (e.g. Swagger UI, Postman, or if the proxy ever fails).
-    CORS_ORIGINS: Union[str, List[str]] = "http://localhost:3000,http://localhost:5173,http://127.0.0.1:5500,http://localhost:8000,https://tubular-bonbon-644eda.netlify.app"
+    CORS_ORIGINS: Union[str, List[str]] = "http://localhost:3000,http://localhost:5173,http://localhost:5500,http://127.0.0.1:5500,http://localhost:8000,http://127.0.0.1:8000,https://tubular-bonbon-644eda.netlify.app"
 
     model_config = SettingsConfigDict(
         env_file=(".env", "backend/.env"),
@@ -40,10 +40,31 @@ class Settings(BaseSettings):
     @property
     def cors_origins_list(self) -> List[str]:
         if isinstance(self.CORS_ORIGINS, list):
-            return self.CORS_ORIGINS
-        if isinstance(self.CORS_ORIGINS, str):
-            return [origin.strip() for origin in self.CORS_ORIGINS.split(",") if origin.strip()]
-        return ["*"]
+            origins = list(self.CORS_ORIGINS)
+        elif isinstance(self.CORS_ORIGINS, str):
+            origins = [origin.strip() for origin in self.CORS_ORIGINS.split(",") if origin.strip()]
+        else:
+            origins = []
+
+        if self.ENVIRONMENT.lower() == "development":
+            dev_defaults = [
+                "http://localhost:5500",
+                "http://127.0.0.1:5500",
+                "http://localhost:8000",
+                "http://127.0.0.1:8000",
+                "http://localhost:3000",
+                "http://127.0.0.1:3000",
+                "http://localhost:5173",
+                "http://127.0.0.1:5173",
+                "http://localhost:5000",
+                "http://127.0.0.1:5000"
+            ]
+            for d in dev_defaults:
+                if d not in origins:
+                    origins.append(d)
+
+        return origins if origins else ["*"]
+
 
 
 settings = Settings()
