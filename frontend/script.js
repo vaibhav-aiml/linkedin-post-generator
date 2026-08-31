@@ -152,6 +152,9 @@ async function generatePost(e) {
     e.preventDefault();
     let topic = document.getElementById('topic').value;
     let type = document.getElementById('postType').value;
+    let length = document.getElementById('postLength') ? document.getElementById('postLength').value : 'medium';
+    let docContextElem = document.getElementById('documentContext');
+    let documentContext = docContextElem ? docContextElem.value.trim() : '';
     
     if (!topic) {
         alert('Please enter a topic');
@@ -161,11 +164,20 @@ async function generatePost(e) {
     document.getElementById('loadingOverlay').style.display = 'flex';
     
     try {
+        let payload = {
+            topic: topic,
+            type: type,
+            length: length
+        };
+        if (documentContext) {
+            payload.document_context = documentContext;
+        }
+
         let response = await fetch(`${API_BASE_URL}/generate-post`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             credentials: 'include',
-            body: JSON.stringify({topic: topic, type: type})
+            body: JSON.stringify(payload)
         });
         
         let data = await response.json();
@@ -620,8 +632,82 @@ async function exportAsPDF() {
     }
 }
 
-function exportAsImage() {
-    alert('Image export feature coming soon');
+async function exportAsImage() {
+    let postResult = document.getElementById('postResult');
+    let content = document.getElementById('postContent');
+    if (!postResult || postResult.style.display === 'none' || !content || !content.innerText.trim()) {
+        alert('Generate a post first');
+        return;
+    }
+
+    if (typeof html2canvas === 'undefined') {
+        alert('Image export library is still loading. Please try again in a moment.');
+        return;
+    }
+
+    try {
+        let isDark = document.body.classList.contains('dark-mode');
+        let canvas = await html2canvas(postResult, {
+            scale: 2,
+            useCORS: true,
+            backgroundColor: isDark ? '#191D24' : '#FAF9F5'
+        });
+        let image = canvas.toDataURL('image/png');
+        let a = document.createElement('a');
+        a.href = image;
+        a.download = 'linkedin_post.png';
+        a.click();
+        alert('Post downloaded as PNG image!');
+    } catch (err) {
+        console.error('Image export failed:', err);
+        alert('Failed to export image: ' + err.message);
+    }
+}
+
+async function handleDocumentUpload(e) {
+    let file = e.target.files[0];
+    if (!file) return;
+
+    let promptEl = document.getElementById('dropzonePrompt');
+    let loadingEl = document.getElementById('dropzoneLoading');
+    let containerEl = document.getElementById('docContextContainer');
+    let textareaEl = document.getElementById('documentContext');
+
+    if (promptEl) promptEl.style.display = 'none';
+    if (loadingEl) loadingEl.style.display = 'flex';
+
+    let formData = new FormData();
+    formData.append('file', file);
+
+    try {
+        let response = await fetch(`${API_BASE_URL}/upload-document`, {
+            method: 'POST',
+            body: formData
+        });
+        let data = await response.json();
+
+        if (response.ok && data.success) {
+            if (textareaEl) textareaEl.value = data.extracted_context;
+            if (containerEl) containerEl.style.display = 'block';
+            alert(`Document processed successfully! (${data.document_type || 'document'}) Context added below.`);
+        } else {
+            alert(data.detail || 'Failed to extract text from document.');
+        }
+    } catch (err) {
+        console.error('Upload error:', err);
+        alert('Error uploading document: ' + err.message);
+    } finally {
+        if (promptEl) promptEl.style.display = 'flex';
+        if (loadingEl) loadingEl.style.display = 'none';
+        e.target.value = '';
+    }
+}
+
+function clearDocumentContext() {
+    let textareaEl = document.getElementById('documentContext');
+    let containerEl = document.getElementById('docContextContainer');
+    if (textareaEl) textareaEl.value = '';
+    if (containerEl) containerEl.style.display = 'none';
 }
 
 function toggleDarkMode() {
@@ -653,4 +739,6 @@ window.loadFavorite = loadFavorite;
 window.shareToLinkedIn = shareToLinkedIn;
 window.exportAsPDF = exportAsPDF;
 window.exportAsImage = exportAsImage;
-window.copyCorrectedVersion = copyCorrectedVersion;
+window.handleDocumentUpload = handleDocumentUpload;
+window.clearDocumentContext = clearDocumentContext;
+window.copyCorrectedVersion = copyCorrectedVersion;

@@ -15,5 +15,7 @@ class Post(Base):
     date = Column(String(50), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     content_hash = Column(String(64), unique=True, index=True, nullable=False)
+    document_context = Column(Text, nullable=True)
 
     owner = relationship("User", back_populates="posts")
+

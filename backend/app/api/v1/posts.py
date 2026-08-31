@@ -1,10 +1,12 @@
 from datetime import datetime
 import hashlib
+import secrets
 import urllib.parse
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 from backend.app.core.database import get_db
+from backend.app.core.limiter import limiter
 from backend.app.core.security import get_current_user_optional, get_current_user
 from backend.app.models.user import User
 from backend.app.models.post import Post
@@ -22,7 +24,9 @@ router = APIRouter(tags=["Posts & Generation"])
 
 
 @router.post("/generate-post", response_model=PostGenerationResponse)
+@limiter.limit("10/minute")
 def generate_post(
+    request: Request,
     req: PostCreateRequest,
     db: Session = Depends(get_db),
     current_user: Optional[User] = Depends(get_current_user_optional)
@@ -33,12 +37,13 @@ def generate_post(
             topic=req.topic,
             post_type=req.type,
             length=req.length,
-            tone=req.tone
+            tone=req.tone,
+            document_context=req.document_context
         )
         hashtags = llm_provider.generate_hashtags(req.topic)
 
         now_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        raw_hash = f"{req.topic.strip()}:{content.strip()}:{now_str}"
+        raw_hash = f"{req.topic.strip()}:{content.strip()}:{datetime.now().isoformat()}:{secrets.token_hex(8)}"
         content_hash = hashlib.sha256(raw_hash.encode('utf-8')).hexdigest()
 
         new_post = Post(
@@ -47,7 +52,8 @@ def generate_post(
             content=content,
             type=req.type,
             date=now_str,
-            content_hash=content_hash
+            content_hash=content_hash,
+            document_context=req.document_context
         )
 
         db.add(new_post)
@@ -62,6 +68,7 @@ def generate_post(
                 content=new_post.content,
                 type=new_post.type,
                 date=new_post.date,
+                document_context=new_post.document_context,
                 suggested_hashtags=hashtags
             )
         )
@@ -74,7 +81,11 @@ def generate_post(
 
 
 @router.post("/generate-message", response_model=MessageResponse)
-def generate_message(req: MessageCreateRequest):
+@limiter.limit("10/minute")
+def generate_message(
+    request: Request,
+    req: MessageCreateRequest
+):
     try:
         llm_provider = LLMFactory.get_provider()
         message = llm_provider.generate_message(
@@ -108,7 +119,8 @@ def get_history(
             "topic": p.topic,
             "content": p.content,
             "type": p.type,
-            "date": p.date
+            "date": p.date,
+            "document_context": p.document_context
         }
         for p in posts
     ]
@@ -140,7 +152,8 @@ def get_post(
             "topic": post.topic,
             "content": post.content,
             "type": post.type,
-            "date": post.date
+            "date": post.date,
+            "document_context": post.document_context
         }
     }
 
@@ -161,3 +174,4 @@ def share_to_linkedin(data: dict):
     encoded = urllib.parse.quote(content)
     share_url = f"https://www.linkedin.com/sharing/share-offsite/?text={encoded}"
     return ShareResponse(success=True, share_url=share_url)
+

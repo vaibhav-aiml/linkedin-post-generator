@@ -9,6 +9,7 @@ class PostCreateRequest(BaseModel):
     tone: Optional[str] = Field("professional", description="Tone of the post")
     key_points: Optional[List[str]] = Field(default=[], description="Bullet points to include")
     include_cta: Optional[bool] = Field(True, description="Whether to include call-to-action")
+    document_context: Optional[str] = Field(None, max_length=3000, description="Verified context extracted from uploaded document")
 
 
 class PostResponse(BaseModel):
@@ -17,7 +18,9 @@ class PostResponse(BaseModel):
     content: str
     type: str
     date: Optional[str] = None
+    document_context: Optional[str] = None
     suggested_hashtags: List[str] = []
+
 
 
 class PostGenerationResponse(BaseModel):

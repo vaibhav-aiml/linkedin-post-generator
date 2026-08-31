@@ -141,20 +141,31 @@ class AnalyzerService:
         ]
 
         # Dynamic AI Rewriting
+        issues = {
+            "word_count": word_count,
+            "length_status": length_status,
+            "question_count": question_count,
+            "hashtag_count": hashtag_count,
+            "has_emoji": has_emoji,
+            "suggestions": suggestions
+        }
+
         corrected_version = text
         try:
             llm = LLMFactory.get_provider()
-            prompt = f"Improve this LinkedIn post for higher engagement, fixing length, readability, questions, and hashtags. Return ONLY the improved post:\n\n{text}"
-            if hasattr(llm, "client") or type(llm).__name__ != "MockLLMProvider":
-                corrected_version = llm.generate_post(topic="LinkedIn Post Optimization", post_type="professional", length="medium", tone="insightful")
+            improved = llm.improve_post(original_text=text, issues=issues)
+            if improved and improved.strip():
+                corrected_version = improved.strip()
         except Exception:
             pass
 
         if corrected_version == text:
+            fallback_parts = [text]
             if question_count == 0:
-                corrected_version += "\n\nWhat are your thoughts on this? Share below! 👇"
+                fallback_parts.append("What are your thoughts on this? Share below! 👇")
             if hashtag_count < 3:
-                corrected_version += "\n\n#ProfessionalGrowth #CareerAdvice #Leadership"
+                fallback_parts.append("#ProfessionalGrowth #CareerAdvice #Leadership")
+            corrected_version = "\n\n".join(fallback_parts)
 
         return AnalysisMetrics(
             score=score,

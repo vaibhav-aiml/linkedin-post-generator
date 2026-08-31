@@ -11,6 +11,7 @@
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
     <!-- Top Navigation & Brand Header -->
@@ -77,6 +78,34 @@
                             </div>
                             <div class="progress-track">
                                 <div id="charProgress" class="progress-fill"></div>
+                            </div>
+                        </div>
+
+                        <!-- Optional Document Upload for Factual Grounding -->
+                        <div class="form-group document-upload-group">
+                            <label class="form-label">
+                                <span><i class="fas fa-file-pdf"></i> Grounding Document (Optional)</span>
+                            </label>
+                            <div class="upload-dropzone" id="uploadDropzone" onclick="document.getElementById('docFileInput').click()">
+                                <input type="file" id="docFileInput" accept=".pdf" style="display: none;" onchange="handleDocumentUpload(event)">
+                                <div class="dropzone-content" id="dropzonePrompt">
+                                    <i class="fas fa-cloud-upload-alt dropzone-icon"></i>
+                                    <span class="dropzone-text">Upload Certificate or Report (PDF)</span>
+                                    <span class="dropzone-hint">Text-based PDF only. Scanned images not supported.</span>
+                                </div>
+                                <div class="dropzone-loading" id="dropzoneLoading" style="display: none;">
+                                    <div class="studio-spinner-sm"></div>
+                                    <span>Extracting document details...</span>
+                                </div>
+                            </div>
+                            <div id="docContextContainer" class="extracted-context-box" style="display: none;">
+                                <div class="context-box-header">
+                                    <span class="context-badge"><i class="fas fa-check-circle"></i> Extracted Document Context (Editable)</span>
+                                    <button type="button" class="btn-remove-context" onclick="clearDocumentContext()" title="Remove context">&times;</button>
+                                </div>
+                                <div class="neumorphic-textarea-wrapper">
+                                    <textarea id="documentContext" rows="3" placeholder="Extracted context will appear here... You can edit before generating."></textarea>
+                                </div>
                             </div>
                         </div>
 

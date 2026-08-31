@@ -11,8 +11,13 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
+from backend.app.core.config import settings
+from backend.app.core.limiter import limiter
 from backend.app.main import app
 from backend.app.core.database import Base, get_db
+
+# Ensure hermetic testing with mock LLM provider
+settings.LLM_PROVIDER = "mock"
 
 SQLALCHEMY_DATABASE_URL = "sqlite:///./test_linkedin_posts.db"
 
@@ -34,6 +39,20 @@ def setup_test_db():
             os.remove("./test_linkedin_posts.db")
         except OSError:
             pass
+
+
+@pytest.fixture(scope="function", autouse=True)
+def reset_rate_limiter():
+    """Reset rate limiter state before each test to prevent cross-test contamination."""
+    try:
+        limiter.reset()
+    except Exception:
+        pass
+    yield
+    try:
+        limiter.reset()
+    except Exception:
+        pass
 
 
 @pytest.fixture(scope="function")
@@ -61,3 +80,4 @@ def client(db_session):
     with TestClient(app) as test_client:
         yield test_client
     app.dependency_overrides.clear()
+

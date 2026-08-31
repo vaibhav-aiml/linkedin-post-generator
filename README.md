@@ -1,6 +1,6 @@
 # LinkedIn Post Generator 🚀
 
-A production-grade, full-stack application built to generate engaging LinkedIn posts and messages, perform real-time AI quality analysis, track analytics, and export content—powered by **FastAPI**, **PostgreSQL/SQLAlchemy**, **Pluggable LLM Engine (Groq / OpenAI / Anthropic)**, and modern security practices.
+A production-grade, full-stack application built to generate engaging LinkedIn posts and messages, extract factual context from uploaded certificates & documents (PDF), perform real-time AI quality analysis, track analytics, and export content—powered by **FastAPI**, **PostgreSQL/SQLAlchemy**, **Pluggable LLM Engine (Groq / OpenAI / Anthropic)**, and modern security practices.
 
 ## 🌐 Live Demo
 
@@ -15,8 +15,10 @@ A production-grade, full-stack application built to generate engaging LinkedIn p
 +---------------------------------------------------------------------------------------+
 |                                  CLIENT BROWSER                                       |
 |  - HTML5 / CSS3 / ES6 JavaScript & Chart.js                                           |
+|  - Document Upload Dropzone & Extracted Context Editor (PDF)                          |
 |  - Auth UI Modal (Login / Register / Profile Badge)                                   |
 |  - httpOnly Cookie Token Auth Handling (XSS Vulnerability Safeguard)                  |
+|  - Multi-Format Export: PDF (ReportLab) & PNG Image (html2canvas)                     |
 +------------------------------------------+--------------------------------------------+
                                            |
                               REST API / JSON / Cookies
@@ -24,9 +26,10 @@ A production-grade, full-stack application built to generate engaging LinkedIn p
 +---------------------------------------------------------------------------------------+
 |                               FASTAPI BACKEND (Python 3.11+)                           |
 |  - Procfile / Gunicorn: gunicorn backend.app.main:app -k uvicorn.workers.UvicornWorker|
-|  - Routers: /api/v1/auth, /api/v1/posts, /api/v1/analyzer, /api/v1/export             |
+|  - Routers: /api/v1/auth, /api/v1/posts, /api/v1/analyzer, /api/v1/export,            |
+|             /api/v1/upload-document                                                   |
 |  - Security: IDOR Ownership Checks, httpOnly JWT Cookies, Slowapi Rate Limiting       |
-|  - Services: Multi-Provider LLM Engine, Dynamic Quality Scoring, ReportLab PDF         |
+|  - Services: Multi-Provider LLM Engine, Document Parsing (pypdf), ReportLab PDF       |
 +-------------------+------------------------------------+------------------------------+
                     |                                    |
                     v                                    v
@@ -34,8 +37,8 @@ A production-grade, full-stack application built to generate engaging LinkedIn p
    |  PostgreSQL / SQLite Database   |  |      Pluggable LLM Providers     |
    | - SQLAlchemy ORM Models         |  | - Groq (Llama 3.3 70B / GPT OSS) |
    | - User-Scoped Data Protection   |  | - OpenAI (GPT-3.5-Turbo / GPT-4o)|
-   | - Idempotent Data Migration     |  | - Anthropic (Claude 3.5 Sonnet)  |
-   |                                 |  | - Token Budget Enforcer          |
+   | - Document Context Persistence  |  | - Anthropic (Claude 3.5 Sonnet)  |
+   | - Idempotent Data Migration     |  | - Token Budget & Injection Shield|
    +---------------------------------+  +----------------------------------+
 ```
 
@@ -43,15 +46,17 @@ A production-grade, full-stack application built to generate engaging LinkedIn p
 
 ## ✨ Features & Highlights
 
+- 📄 **Document Upload & Grounded Generation**: Upload PDF certificates or reports to automatically extract verified achievements, dates, and credentials, grounding generated LinkedIn posts in real facts with prompt-injection defenses.
 - 🤖 **Multi-Provider LLM Engine**: Native support for **Groq**, **OpenAI**, and **Anthropic** with automatic fallback to mock engine for offline development. Enforces `max_tokens` (1000 limit) and input length validation to control billing.
 - 🔐 **JWT Auth & Ownership Protection**: User registration and login powered by bcrypt password hashing and **`httpOnly` JWT cookies**. Enforces user ownership checks to eliminate IDOR and global wiping vulnerabilities.
-- 🔍 **AI-Assisted Quality Analyzer**: Analyzes length, line spacing, questions, emojis, and hashtags, providing dynamic AI-rewritten post versions.
+- ⏱️ **Active Rate Limiting**: Slowapi middleware enforces 10 req/min limits on LLM and parsing routes while keeping uptime monitoring (`/health`) unthrottled.
+- 🔍 **AI-Assisted Quality Analyzer**: Analyzes length, line spacing, questions, emojis, and hashtags, providing dynamic AI-rewritten post versions that preserve the user's original message.
 - 🗄️ **Relational Database Storage**: Migrated from legacy `post_history.json` to SQLAlchemy ORM (PostgreSQL/SQLite) with idempotent deduplicated data migration.
 - 💻 **Frontend Auth Integration**: Interactive Login/Register modal, automatic user session detection, and dynamic API base URL routing.
 - 📊 **Analytics Dashboard**: Interactive Chart.js visualizers for post counts, popular topics, and timeline trends.
-- 📄 **Export Utilities**: High-quality PDF export (ReportLab) and direct LinkedIn sharing links.
-- 🐳 **Docker Parity**: Multi-stage `Dockerfile` and `docker-compose.yml` for unified local dev and production deployment.
-- 🧪 **Automated Testing & CI**: Pytest suite covering endpoints, auth, IDOR checks, and logic, integrated into GitHub Actions CI (`.github/workflows/ci.yml`).
+- 📄 **Multi-Format Export Utilities**: High-quality PDF export (ReportLab with XML entity sanitization), PNG image export (`html2canvas`), and direct LinkedIn sharing links.
+- 🐳 **Multi-Stage Docker Parity**: True multi-stage `Dockerfile` (stripping `build-essential` from runtime) and `docker-compose.yml` for unified local dev and production deployment.
+- 🧪 **Automated Testing & CI**: Pytest suite covering endpoints, auth, document extraction, rate limiting, and IDOR checks.
 - 📖 **OpenAPI Documentation**: Automatic Swagger UI documentation available at `/docs`.
 
 ---
@@ -74,7 +79,7 @@ A production-grade, full-stack application built to generate engaging LinkedIn p
 
 3. **Install Dependencies**:
    ```bash
-    pip install -r backend/requirements.txt
+   pip install -r backend/requirements.txt
    ```
 
 4. **Run Idempotent Data Migration**:
@@ -110,26 +115,28 @@ The application will be live with PostgreSQL database at `http://localhost:8000`
 Run the full Pytest test suite:
 
 ```bash
-python -m pytest -v
+pytest tests/ -v
 ```
 
 ---
 
 ## 📡 Key API Endpoints
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/health` | Service health diagnostic status |
-| POST | `/api/v1/auth/register` | Register new user account |
-| POST | `/api/v1/auth/login` | Login user & set httpOnly access token cookie |
-| POST | `/api/v1/auth/logout` | Logout user & clear cookie |
-| GET | `/api/v1/auth/me` | Retrieve authenticated user profile |
-| POST | `/api/v1/generate-post` | Generate LinkedIn post with LLM |
-| POST | `/api/v1/generate-message` | Generate professional message |
-| POST | `/api/v1/analyze-text` | Analyze post quality & score with AI rewrite |
-| GET | `/api/v1/get-history` | Retrieve user post history |
-| DELETE | `/api/v1/delete-history` | Delete history for authenticated user |
-| POST | `/api/v1/export-pdf` | Download post as PDF document |
+| Method | Endpoint | Rate Limit | Description |
+|--------|----------|------------|-------------|
+| GET | `/api/health` | Exempt | Service health diagnostic status |
+| POST | `/api/v1/auth/register` | Default | Register new user account |
+| POST | `/api/v1/auth/login` | Default | Login user & set httpOnly access token cookie |
+| POST | `/api/v1/auth/logout` | Default | Logout user & clear cookie |
+| GET | `/api/v1/auth/me` | Default | Retrieve authenticated user profile |
+| POST | `/api/v1/upload-document` | 10/min | Parse PDF and extract grounding achievement context |
+| POST | `/api/v1/generate-post` | 10/min | Generate LinkedIn post with LLM (optional document context) |
+| POST | `/api/v1/generate-message` | 10/min | Generate professional networking message |
+| POST | `/api/v1/analyze-text` | 10/min | Analyze post quality & score with AI rewrite |
+| GET | `/api/v1/get-history` | Default | Retrieve user post history |
+| GET | `/api/v1/get-post/{post_id}` | Default | Retrieve post details (with ownership check) |
+| DELETE | `/api/v1/delete-history` | Default | Delete history for authenticated user |
+| POST | `/api/v1/export-pdf` | 10/min | Download post as PDF document (with XML sanitization) |
 
 Full interactive API documentation is available at `/docs`.
 
@@ -138,3 +145,4 @@ Full interactive API documentation is available at `/docs`.
 ## 📄 License
 
 This project is open source and available under the **MIT License**.
+
