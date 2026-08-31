@@ -182,20 +182,30 @@ async function generatePost(e) {
         
         let data = await response.json();
         
-        if (data.success) {
+        if (response.ok && data.success) {
             document.getElementById('postContent').innerHTML = data.post.content.replace(/\n/g, '<br>');
-            document.getElementById('postResult').style.display = 'block';
+            let postResultEl = document.getElementById('postResult');
+            postResultEl.style.display = 'block';
             
             let hashtags = document.getElementById('postHashtags');
-            hashtags.innerHTML = '';
-            data.post.suggested_hashtags.forEach(tag => {
-                let span = document.createElement('span');
-                span.textContent = tag;
-                hashtags.appendChild(span);
-            });
+            if (hashtags) {
+                hashtags.innerHTML = '';
+                if (data.post.suggested_hashtags && Array.isArray(data.post.suggested_hashtags)) {
+                    data.post.suggested_hashtags.forEach(tag => {
+                        let span = document.createElement('span');
+                        span.className = 'hashtag-chip';
+                        span.textContent = tag;
+                        hashtags.appendChild(span);
+                    });
+                }
+            }
             
             await loadHistory();
-            alert('Post generated and saved to history!');
+            setTimeout(() => {
+                postResultEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 100);
+        } else {
+            alert(data.detail || 'Failed to generate post.');
         }
     } catch (error) {
         console.error(error);
@@ -204,6 +214,7 @@ async function generatePost(e) {
     
     document.getElementById('loadingOverlay').style.display = 'none';
 }
+
 
 async function generateMessage(e) {
     e.preventDefault();
@@ -216,6 +227,8 @@ async function generateMessage(e) {
         return;
     }
     
+    document.getElementById('loadingOverlay').style.display = 'flex';
+    
     try {
         let response = await fetch(`${API_BASE_URL}/generate-message`, {
             method: 'POST',
@@ -226,14 +239,49 @@ async function generateMessage(e) {
         
         let data = await response.json();
         
-        if (data.success) {
+        if (response.ok && data.success) {
             document.getElementById('messageContent').innerHTML = data.message.replace(/\n/g, '<br>');
-            document.getElementById('messageResult').style.display = 'block';
+            let messageResultEl = document.getElementById('messageResult');
+            messageResultEl.style.display = 'block';
+            setTimeout(() => {
+                messageResultEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 100);
+        } else {
+            alert(data.detail || 'Failed to generate message.');
         }
     } catch (error) {
-        alert('Error generating message');
+        alert('Error generating message: Make sure backend is running');
     }
+    
+    document.getElementById('loadingOverlay').style.display = 'none';
 }
+
+function copyToClipboard(elementId) {
+    let el = document.getElementById(elementId);
+    if (!el) return;
+    let text = el.innerText || el.textContent;
+    if (!text.trim()) {
+        alert('No content to copy!');
+        return;
+    }
+    navigator.clipboard.writeText(text).then(() => {
+        alert('Copied to clipboard!');
+    }).catch(err => {
+        console.error('Clipboard copy error:', err);
+        let textArea = document.createElement('textarea');
+        textArea.value = text;
+        document.body.appendChild(textArea);
+        textArea.select();
+        try {
+            document.execCommand('copy');
+            alert('Copied to clipboard!');
+        } catch (e) {
+            alert('Failed to copy text.');
+        }
+        document.body.removeChild(textArea);
+    });
+}
+
 
 async function analyzeText() {
     let text = document.getElementById('textToAnalyze').value;
@@ -741,4 +789,6 @@ window.exportAsPDF = exportAsPDF;
 window.exportAsImage = exportAsImage;
 window.handleDocumentUpload = handleDocumentUpload;
 window.clearDocumentContext = clearDocumentContext;
-window.copyCorrectedVersion = copyCorrectedVersion;
+window.copyCorrectedVersion = copyCorrectedVersion;
+window.copyToClipboard = copyToClipboard;
+
