@@ -4,13 +4,34 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
+import os
 from backend.app.core.config import settings
 from backend.app.core.database import engine, Base
 from backend.app.core.limiter import limiter
 from backend.app.api.v1 import auth, posts, analyzer, export, upload
 
-# Ensure database tables exist on startup
-Base.metadata.create_all(bind=engine)
+
+def run_db_migrations():
+    """Run alembic migrations automatically on startup to keep schema in sync."""
+    try:
+        from alembic.config import Config
+        from alembic import command
+        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        ini_path = os.path.join(base_dir, "alembic.ini")
+        if os.path.exists(ini_path):
+            alembic_cfg = Config(ini_path)
+            alembic_cfg.set_main_option("script_location", os.path.join(base_dir, "alembic"))
+            alembic_cfg.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
+            command.upgrade(alembic_cfg, "head")
+        else:
+            Base.metadata.create_all(bind=engine)
+    except Exception as e:
+        Base.metadata.create_all(bind=engine)
+
+
+# Run migrations on startup
+run_db_migrations()
+
 
 app = FastAPI(
     title=settings.PROJECT_NAME,

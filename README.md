@@ -87,26 +87,43 @@ A production-grade, full-stack application built to generate engaging LinkedIn p
    python scripts/migrate_json_to_db.py
    ```
 
-5. **Start FastAPI Backend**:
+5. **Database Migrations & Startup**:
+   Database migrations run automatically on startup (`alembic upgrade head`). You can also run them manually:
+   ```bash
+   alembic upgrade head
+   ```
+
+6. **Start FastAPI Backend**:
    ```bash
    uvicorn backend.app.main:app --reload --port 8000
    ```
    - API Docs: [http://localhost:8000/docs](http://localhost:8000/docs)
    - Health Check: [http://localhost:8000/api/health](http://localhost:8000/api/health)
 
-6. **Open the Frontend**:
+7. **Open the Frontend**:
    Open `frontend/index.html` in your browser or run Live Server.
 
 ---
 
-### Option B: Docker Compose (Production Parity)
+### Option B: Docker Compose (Production Parity with PostgreSQL)
 
 ```bash
 cp .env.example .env
 docker-compose up --build
 ```
 
-The application will be live with PostgreSQL database at `http://localhost:8000`.
+The application will be live with a managed PostgreSQL database container at `http://localhost:8000`.
+
+---
+
+## 🗄️ Database Architecture & Migrations
+
+- **Production (Render / Docker Compose)**: Managed PostgreSQL with persistent storage (`DATABASE_URL=postgresql://...`).
+- **Local Development**: Seamless SQLite default (`sqlite:///./linkedin_posts.db`) with zero external service requirements.
+- **Alembic Migrations**:
+  - Run migrations: `alembic upgrade head`
+  - Generate migration: `alembic revision --autogenerate -m "migration_name"`
+  - Rollback: `alembic downgrade -1`
 
 ---
 
@@ -117,6 +134,7 @@ Run the full Pytest test suite:
 ```bash
 pytest tests/ -v
 ```
+
 
 ---
 

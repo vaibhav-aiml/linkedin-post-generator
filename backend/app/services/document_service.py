@@ -16,13 +16,18 @@ ALLOWED_MIME_TYPES = {
 MAX_EXTRACTED_CHARS = 2000  # ~500-800 tokens
 
 
+HTTP_413_CONTENT_TOO_LARGE = getattr(status, "HTTP_413_CONTENT_TOO_LARGE", getattr(status, "HTTP_413_REQUEST_ENTITY_TOO_LARGE", 413))
+HTTP_422_UNPROCESSABLE_CONTENT = getattr(status, "HTTP_422_UNPROCESSABLE_CONTENT", getattr(status, "HTTP_422_UNPROCESSABLE_ENTITY", 422))
+HTTP_415_UNSUPPORTED_MEDIA_TYPE = getattr(status, "HTTP_415_UNSUPPORTED_MEDIA_TYPE", 415)
+
+
 class DocumentService:
     @staticmethod
     def validate_file(file: UploadFile, content_bytes: bytes) -> str:
         # Check file size
         if len(content_bytes) > MAX_FILE_SIZE:
             raise HTTPException(
-                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                status_code=HTTP_413_CONTENT_TOO_LARGE,
                 detail=f"File size exceeds 5MB limit. Current size: {len(content_bytes) / (1024 * 1024):.2f}MB"
             )
 
@@ -32,7 +37,7 @@ class DocumentService:
 
         if ext not in ALLOWED_EXTENSIONS and content_type not in ALLOWED_MIME_TYPES:
             raise HTTPException(
-                status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+                status_code=HTTP_415_UNSUPPORTED_MEDIA_TYPE,
                 detail=f"Unsupported file type '{ext or content_type}'. Please upload a .pdf certificate or document."
             )
 
@@ -44,7 +49,7 @@ class DocumentService:
 
         if ext in {".png", ".jpg", ".jpeg"}:
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=HTTP_422_UNPROCESSABLE_CONTENT,
                 detail="Scanned image files and images require OCR. Please upload a text-based PDF certificate."
             )
 
@@ -58,16 +63,17 @@ class DocumentService:
                     pages_text.append(text.strip())
         except Exception as e:
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=HTTP_422_UNPROCESSABLE_CONTENT,
                 detail=f"Failed to parse PDF document: {str(e)}"
             )
 
         raw_text = "\n\n".join(pages_text).strip()
         if not raw_text:
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=HTTP_422_UNPROCESSABLE_CONTENT,
                 detail="No extractable text found in this PDF. It appears to be a scanned image. Please upload a text-based PDF certificate."
             )
+
 
         extracted_context, doc_type, warnings = cls._summarize_context(raw_text)
 

@@ -1,11 +1,21 @@
+databases:
+  - name: linkedin-db
+    databaseName: linkedin_db
+    user: postgres
+    plan: free
+
 services:
   - type: web
     name: linkedin-post-generator-backend
     env: python
     buildCommand: pip install -r backend/requirements.txt
-    startCommand: uvicorn app:app --host 0.0.0.0 --port $PORT
+    startCommand: alembic upgrade head && uvicorn app:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /api/health
     envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: linkedin-db
+          property: connectionString
       - key: ENVIRONMENT
         value: production
       - key: DEBUG
